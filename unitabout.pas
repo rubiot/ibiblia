@@ -114,6 +114,9 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.096 (64-bit Edition) - 2026-11-22' + LineEnding +
+  '- Updated the in-app User Guide (Shift+F1 in unitabout.pas and FormNewFeaturesGuide.pas) through v1.1.0.096 with full documentation for Notepad++-style Find & Replace (Ctrl+F / Ctrl+H, Normal/Extended/PCRE Regex, Match exact words, Range filter, Unassociated Destination/Source words, LCS association-preserving replace, 7-step Undo/Redo, Transparency), Activate window on mouse hover, Night default skin, Export Module Properties Preview/Raw tabs, and Project Change Log inline diffs.' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.095 (64-bit Edition) - 2026-11-22' + LineEnding +
   '- Added ''Match exact words'' option to Find & Replace in Project (UTF-8 word-boundary matching across Normal, Extended, and Unassociated word searches, with extra GTK2 vertical clearance in the Options box).' + LineEnding +
   '' + LineEnding +
@@ -768,7 +771,7 @@ begin
     ver := '';
   end;
   if (ver = '') or (ver = '1.1.0.0') or (ver = '1.1.0.1') then
-    ver := '1.1.0.095';
+    ver := '1.1.0.096';
 
   LabelVersion := TLabel.Create(Self);
   LabelVersion.Parent := Self;
@@ -1247,7 +1250,7 @@ constructor TFormUserGuide.Create(AOwner: TComponent);
 begin
   inherited CreateNew(AOwner);
 
-  Caption := 'iBiblia — New Features User Guide (Since v1.0.0.71)';
+  Caption := 'Dark-Skinned iBiblia — New Features User Guide (Since v1.0.0.71)';
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu, biMinimize, biMaximize];
   FormStyle := fsStayOnTop;
@@ -1280,7 +1283,7 @@ begin
   lblHeaderTitle.Font.Name := 'Segoe UI';
   lblHeaderTitle.Font.Height := -17;
   lblHeaderTitle.Font.Style := [fsBold];
-  lblHeaderTitle.Caption := 'iBiblia New Features User Guide (v1.0.0.71 – v1.1.0.070)';
+  lblHeaderTitle.Caption := 'Dark-Skinned iBiblia User Guide (v1.0.0.71 – v1.1.0.096)';
 
   lblHeaderSub := TLabel.Create(pnlHeader);
   lblHeaderSub.Parent := pnlHeader;
@@ -1438,14 +1441,14 @@ begin
     2: Result := '3. Chevrons, Status & Tabs';
     3: Result := '4. Editor, Paragraphs & Italics';
     4: Result := '5. Text-to-Speech (TTS)';
-    5: Result := '6. Dark Mode & 7 Skins';
+    5: Result := '6. Skins & Hover Activate';
     6: Result := '7. Import/Export & Sync';
-    7: Result := '8. Status Filter & Find (Ctrl+F)';
+    7: Result := '8. Find & Replace (Ctrl+F/H)';
     8: Result := '9. 1.1.0 Visual Editor & Notes';
     9: Result := '10. 1.1.0 BiDi & Trans. Memory';
     10: Result := '11. 1.1.0 Wizard, AI & Icons';
     11: Result := '12. Tree: Arrange, Delete, Add';
-    12: Result := '13. Updates, Branch & Backups';
+    12: Result := '13. Updates, Logs & Backups';
     13: Result := '14. Full Feature Summary';
   else
     Result := '';
@@ -1460,15 +1463,15 @@ begin
     2: Result := 'v1.0.0.76 – v1.1.0.019';
     3: Result := 'v1.0.1.002 – v1.1.0.0';
     4: Result := 'v1.0.0.73 – v1.0.0.74';
-    5: Result := 'v1.0.0.80 – v1.0.1.023';
-    6: Result := 'v1.0.0.71 – v1.1.0.070';
-    7: Result := 'v1.0.0.70 – v1.1.0.0';
+    5: Result := 'v1.0.0.80 – v1.1.0.092';
+    6: Result := 'v1.0.0.71 – v1.1.0.074';
+    7: Result := 'v1.0.0.70 – v1.1.0.095';
     8: Result := 'v1.1.0.0 WYSIWYG & Notes';
     9: Result := 'v1.1.0.0 BiDi & Memory';
     10: Result := 'v1.1.0.0 – v1.1.0.019 AI & UI';
     11: Result := 'v1.1.0.053 – v1.1.0.065 Tree & Books';
-    12: Result := 'v1.1.0.048 – v1.1.0.068 Updates';
-    13: Result := 'All Features (v1.0.0.70–v1.1.0.070)';
+    12: Result := 'v1.1.0.048 – v1.1.0.088 Logs/Updates';
+    13: Result := 'All Features (v1.0.0.70–v1.1.0.096)';
   else
     Result := '';
   end;
@@ -1482,15 +1485,15 @@ begin
     2: Result := '3. In-Verse Controls: Hover Navigation Chevrons, 4-Dot Status Bar & Mode Tabs';
     3: Result := '4. Visual Editor: Paragraph Keys, Italics on Save & Live Preview';
     4: Result := '5. Real-Time Text-to-Speech (TTS) Hover Reader (Greek, Hebrew & English)';
-    5: Result := '6. Dark Mode UI & 7 theWord Color Themes (Classic, Dark, Night, Sepia, Slate...)';
+    5: Result := '6. Dark Mode UI (Night Default), 7 Skins & Activate Window on Mouse Hover';
     6: Result := '7. Multi-Format Import/Export (.ont, e-Sword, USFM 3.0, USFX, SWORD), Apocrypha & Sync';
-    7: Result := '8. Verse Status Filtering (F8 / Shift+F8) & Find in Project (Ctrl+F)';
+    7: Result := '8. Status Filter (F8) & Notepad++-Style Find & Replace (Ctrl+F / Ctrl+H)';
     8: Result := '9. iBiblia 1.1.0: Visual WYSIWYG & Raw ONT Editor, Semantic Markup & Translator Notes';
     9: Result := '10. iBiblia 1.1.0: Bidirectional DirectWrite Rendering, Edit Safety & Translation Memory';
     10: Result := '11. iBiblia 1.1.0: Guided Project Wizard, Custom Statuses, AI Workflows & Toolbar Sizes';
     11: Result := '12. iBiblia 1.1.0: Arrange, Delete and Add Books in the Tree';
-    12: Result := '13. iBiblia 1.1.0: Automatic Updates, Update Branch (Stable / Neon), Backups & Linux';
-    13: Result := '14. Complete Quick-Reference Summary of All New Features (v1.0.0.70 – v1.1.0.070)';
+    12: Result := '13. Dark-Skinned iBiblia: Updates, Project Change Log, Crash Logs, Backups & Linux';
+    13: Result := '14. Complete Quick-Reference Summary of All New Features (v1.0.0.70 – v1.1.0.096)';
   else
     Result := '';
   end;
@@ -1631,34 +1634,26 @@ begin
         '     • Standalone Apocrypha OT books (Book >= 67: 1–2 Esdras, Tobit, Judith, 1–4 Maccabees, Prayer of Manasseh, Wisdom, Sirach, Baruch, Letter of Jeremiah, Prayer of Azariah, Susanna, Bel and the Dragon, Psalm 151, Psalms of Solomon, Odes, Laodiceans) sit between Malachi and Matthew in imported file order, and extra chapters (Daniel 13–14, Psalms 151, Esther 11–16) appear under their canonical books.' + sLineBreak + sLineBreak +
         '  3. Smart "Needs Review" Status on Text Reload & Concurrent theWord 7 + Tanglaw Bible Sync:' + sLineBreak +
         '     • Reloading a Bible text in Project > Settings compares actual words: tag-only updates stay Green ("Associated!"), while word edits become Red ("Needs review").' + sLineBreak +
+        '     • Export Window Module Properties Preview & Raw (Edit) Tabs (v1.1.0.073–074): inspect rendered HTML/RTF module properties before exporting, double-click Preview to jump into Raw edit mode, scroll with the mouse wheel, and zoom with Ctrl+mouse wheel.' + sLineBreak +
+        '     • Concordance Export (v1.1.0.072): exports real verse references instead of [vref] placeholders.' + sLineBreak +
         '     • Enable the theWord and Timotheos (Tanglaw) synchronization items in the Tools menu simultaneously for bidirectional verse synchronization.';
 
     7:
       Result :=
-        'FEATURE OVERVIEW (v1.0.0.70 – v1.0.0.76)' + sLineBreak +
-        'Filter the left Bible TreeView by association status with live per-status verse counts, step directly through matching verses across chapters and books (F8 / Shift+F8), and search across the entire project using the modeless Find in Project dialog (Ctrl+F).' + sLineBreak + sLineBreak +
+        'FEATURE OVERVIEW (v1.0.0.70 – v1.1.0.095)' + sLineBreak +
+        'Filter the left Bible TreeView by association status (F8 / Shift+F8), and use the full Notepad++-style Find & Replace in Project tool (Ctrl+F for Find, Ctrl+H for Replace) to search or bulk-edit words and tags directly inside your project while preserving word associations.' + sLineBreak + sLineBreak +
         'HOW TO USE:' + sLineBreak +
         '  1. Verse Status Filtering & Filtered Stepping (Above Left Bible TreeView):' + sLineBreak +
-        '     • Open the Status Filter dropdown at the top of the left navigation panel to filter the Bible tree by status with live verse counts:' + sLineBreak +
-        '       - All verses (Total count)' + sLineBreak +
-        '       - Not associated (Count)' + sLineBreak +
-        '       - Associating (Count)' + sLineBreak +
-        '       - Needs review (Count)' + sLineBreak +
-        '       - Associated! (Count)' + sLineBreak +
-        '     • Click "<" (or press SHIFT + F8) to jump to the previous verse matching the selected status.' + sLineBreak +
-        '     • Click ">" (or press F8) to jump to the next verse matching the selected status.' + sLineBreak +
-        '     • The live counter beside the buttons displays "N found", and your active filter is persisted both per-project (.ibb) and in iBiblia.ini.' + sLineBreak + sLineBreak +
-        '  2. Project-Wide Search — Find in Project (Edit > Find in Project... / Ctrl+F):' + sLineBreak +
-        '     • Press CTRL + F at any time to open the floating Find in Project window.' + sLineBreak +
-        '     • Type a word, phrase, or Strong''s code and choose one of the 7 "Look in:" scopes:' + sLineBreak +
-        '       1) Destination translation (Target text)' + sLineBreak +
-        '       2) Original source (Hebrew / Greek)' + sLineBreak +
-        '       3) Reference text 1' + sLineBreak +
-        '       4) Reference text 2' + sLineBreak +
-        '       5) Strong tags / Pairs (e.g. G3056, H7225, or morphology tags)' + sLineBreak +
-        '       6) Translator notes / Comments' + sLineBreak +
-        '       7) All text fields' + sLineBreak +
-        '     • Click or double-click any matching verse in the results list (or click "< Previous Match" / "Next Match >") to jump directly to that verse in the main workspace.';
+        '     • Open the Status Filter dropdown to filter the Bible tree by status with live verse counts (All, Not associated, Associating, Needs review, Associated!).' + sLineBreak +
+        '     • Press F8 (Next) or SHIFT + F8 (Previous) to step through matching verses across chapters and books.' + sLineBreak + sLineBreak +
+        '  2. Notepad++-Style Find & Replace in Project (Ctrl+F / Ctrl+H, v1.1.0.089 – v1.1.0.095):' + sLineBreak +
+        '     • Press CTRL + F (Find tab) or CTRL + H (Replace tab) to open the floating Find & Replace window. History dropdowns remember your last 20 Find/Replace entries, and <-> swaps Find what and Replace with.' + sLineBreak +
+        '     • Search Modes: Normal (literal), Extended (\n, \r, \t, \0, \\, \xHH, \uHHHH), and PCRE Regular Expression (with . matches newline, capture groups $0/$&/$1-$99/\1-\9/${name}, and \u/\l/\U/\L/\E case transforms).' + sLineBreak +
+        '     • Options & Transparency: Match exact words (UTF-8 word boundaries), Match case, Wrap around, Keep word associations (checked by default), Show raw tags in preview, and optional Window Transparency (On losing focus / Always + opacity slider).' + sLineBreak +
+        '     • Look in & Range: Target Destination text, Source text, Reference 1/2, Strong''s / morphology tags, Comments, All fields, Unassociated Destination words, or Unassociated Source words across the Whole project, Current book, or Current chapter.' + sLineBreak +
+        '     • Finding Unassociated Words (v1.1.0.093–094): Select "Unassociated Destination words" or "Unassociated Source words" and leave Find what blank to list every verse with unlinked words (shown in [brackets]), or enter a word or regex to filter specific unassociated words.' + sLineBreak +
+        '     • Association-Preserving Bulk Replace (LCS Fix, v1.1.0.093): Replace and Replace All show live Before ==> After previews, apply changes directly in-project using Longest Common Subsequence (LCS) alignment + in-place 1-to-1 and N-to-M association transfer so replaced words/phrases keep their links without disturbing other words in the verse, log to the Project Change Log, and auto-save.' + sLineBreak +
+        '     • 7-Step Session Undo (Ctrl+Z) & Redo (Ctrl+Y) (v1.1.0.091): Undo or Redo up to 7 Find & Replace operations per session with confirmation prompts—restoring all modified verses even after the project has been saved.';
 
     8:
       Result :=
@@ -1741,7 +1736,10 @@ begin
         '     • Before Replace, Add Books, Clear Text, Apply Patch, or Apply AI, iBiblia offers "Back up and continue" (keeping the newest 2 automatic backups; manual backups you create are never deleted).' + sLineBreak +
         '     • "Restore project..." lists backups by date, type, note, associated verse count, and size, and automatically backs up the current project first so any restore can be undone. File > Open also opens .bib.zip files directly.' + sLineBreak + sLineBreak +
         '  3. Native 64-Bit Linux Edition:' + sLineBreak +
-        '     • Runs natively on Linux x86_64 with transparent hover bottom bars, Linux RTF dictionary popups, TTS (espeak-ng/espeak/spd-say), Timotheos sync, automatic desktop menu registration (~/.local/share/applications/ibiblia.desktop), and cloud-built GitHub Releases.';
+        '     • Runs natively on Linux x86_64 with transparent hover bottom bars, Linux RTF dictionary popups, TTS (espeak-ng/espeak/spd-say), Timotheos sync, automatic desktop menu registration (~/.local/share/applications/ibiblia.desktop), and cloud-built GitHub Releases (SalitaNgDiyos/Dark-Skinned-iBiblia).' + sLineBreak + sLineBreak +
+        '  4. Project Change Log & Crash Logs (v1.1.0.083 – v1.1.0.086):' + sLineBreak +
+        '     • Project > Project change log... records dictionary changes, settings, verse text edits, and Find & Replace batches, displaying GitHub-style red/green inline diffs for text edits with Ctrl+mouse wheel zoom and a resizable Details splitter.' + sLineBreak +
+        '     • Help > Crash & error logs... lets you inspect and copy diagnostic reports cleanly.';
 
     13:
       begin
@@ -2555,7 +2553,7 @@ var
     DrawBadge(C, W div 2 + 10,  64, 'Ctrl + Shift + D : Toggle Dark Mode / 7 theWord Skins', ptBg, ptTxt, borderCol, True);
     DrawBadge(C, W div 2 + 10,  94, 'Ctrl + T : Toggle Real-Time Hover Text-to-Speech (TTS)', winBg, txtCol, hdrCol, True);
     DrawBadge(C, W div 2 + 10, 124, 'Keys 1..9 / 4 Dots : Set Verse Status (Synced with Bible Tree)', winBg, txtCol, borderCol, False);
-    DrawBadge(C, W div 2 + 10, 154, 'Ctrl + F : Find in Project   |   Shift+F1 : Open This User Guide', winBg, txtCol, borderCol, False);
+    DrawBadge(C, W div 2 + 10, 154, 'Ctrl+F / Ctrl+H : Find & Replace   |   Shift+F1 : User Guide', winBg, txtCol, borderCol, False);
   end;
 
 begin
@@ -2661,9 +2659,9 @@ begin
   end
   else
   begin
-    Caption := 'iBiblia — New Features User Guide (Since v1.0.0.71)';
+    Caption := 'Dark-Skinned iBiblia — New Features User Guide (Since v1.0.0.71)';
     if Assigned(lblHeaderTitle) then
-      lblHeaderTitle.Caption := 'iBiblia New Features User Guide (v1.0.0.71 – v1.1.0.070)';
+      lblHeaderTitle.Caption := 'Dark-Skinned iBiblia User Guide (v1.0.0.71 – v1.1.0.096)';
     if Assigned(lblHeaderSub) then
       lblHeaderSub.Caption := 'Floating Interactive Guide — Keep this window open while practicing features directly in iBiblia.';
     if Assigned(btnPrev) then btnPrev.Caption := '< Previous Topic';

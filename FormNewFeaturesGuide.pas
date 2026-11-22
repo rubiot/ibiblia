@@ -34,15 +34,15 @@ const
     '3. The control strip on each verse panel',
     '4. Editing: paragraphs, italics and saving',
     '5. Text to speech',
-    '6. Skins and dark mode',
+    '6. Skins, Night default and hover activate',
     '7. Importing and exporting Bibles, Apocrypha',
-    '8. Status filter (F8) and Find in project (Ctrl+F)',
+    '8. Status filter (F8) and Find & Replace (Ctrl+F / Ctrl+H)',
     '9. Synchronization with theWord and Timotheos',
     '10. 1.1.0 Visual WYSIWYG Editor & Translator Notes',
     '11. 1.1.0 BiDi Rendering & Translation Memory',
     '12. 1.1.0 Guided Wizard, Custom Statuses & AI Flows',
     '13. Tree: Arrange, Delete and Add Books',
-    '14. Updates, Update Branch & Project Backups');
+    '14. Updates, Change Log, Crash Logs & Backups');
 
   TOPIC_TEXTS: array[0..TOPIC_COUNT - 1] of string = (
     // 1
@@ -103,7 +103,11 @@ const
     'and Classic.' + LineEnding + LineEnding +
     'A skin covers the main window, the menu bar, the verse panels, the context panel ' +
     'and every other window, which is skinned the first time it opens. Classic keeps ' +
-    'the standard colours. Your choice is remembered.',
+    'the standard colours. Your choice is remembered.' + LineEnding + LineEnding +
+    'ACTIVATE WINDOW ON MOUSE HOVER' + LineEnding +
+    'View > Activate window on mouse hover (enabled by default) automatically activates ' +
+    'Dark-Skinned iBiblia when you move the pointer onto any visible part of the app while ' +
+    'it is inactive, without stealing focus during drags, Alt+Tab, or through overlapping windows.',
     // 7
     'IMPORT' + LineEnding + LineEnding +
     'New project and Project settings read theWord modules (.ont, .ot, .nt) and also ' +
@@ -143,9 +147,19 @@ const
     'In the status list under the Bible tree, untick the statuses you do not want. ' +
     'F8 goes to the next verse that has one of the ticked statuses, Shift+F8 to the ' +
     'previous one. The choice is remembered for the next session.' + LineEnding + LineEnding +
-    'FIND IN PROJECT' + LineEnding +
-    'Ctrl+F searches the Source, the Destination or the reference texts of the whole ' +
-    'project, Apocrypha included, and goes to the verse you choose.',
+    'NOTEPAD++-STYLE FIND & REPLACE (CTRL+F / CTRL+H)' + LineEnding +
+    '  - Ctrl+F opens Find and Ctrl+H opens Replace, with 20-item history dropdowns and a <-> Swap button.' + LineEnding +
+    '  - Search Modes: Normal, Extended (\n, \r, \t, \0, \xHH, \uHHHH), and PCRE Regular Expression ' +
+    '(. matches newline, $1/\1/${name} capture groups, \u/\l/\U/\L/\E case transforms).' + LineEnding +
+    '  - Options: Match exact words (UTF-8 boundaries), Match case, Wrap around, Keep word associations ' +
+    '(LCS + in-place 1-to-1 and N-to-M transfer so replaced words/phrases keep their links without breaking ' +
+    'other words in the verse), Show raw tags in preview, and Window Transparency.' + LineEnding +
+    '  - Look in & Range: Destination, Source, Ref 1/2, Strong''s/Morph, Comments, All fields, plus ' +
+    'Unassociated Destination words and Unassociated Source words (leave Find what blank to list all ' +
+    'unlinked words in [brackets], or type a word/regex to filter), scoped to Whole project, Current book, ' +
+    'or Current chapter.' + LineEnding +
+    '  - 7-Step Undo (Ctrl+Z) & Redo (Ctrl+Y): restores modified verses even after the project has been ' +
+    'saved, with confirmation prompts and Project Change Log tracking.',
     // 9
     'THEWORD' + LineEnding + LineEnding +
     'iBiblia and theWord follow each other''s verse, in both directions. This works in ' +
@@ -211,7 +225,11 @@ const
     'In Project > Settings > Project, use "Back up this project" (.bib.zip with optional ' +
     'note) and "Restore project..." (automatically backs up the current project first). ' +
     'iBiblia also offers a backup prompt before Replace, Add Books, Clear Text, Apply Patch, ' +
-    'or Apply AI. File > Open accepts .bib.zip archives directly.');
+    'or Apply AI. File > Open accepts .bib.zip archives directly.' + LineEnding + LineEnding +
+    'PROJECT CHANGE LOG & CRASH LOGS' + LineEnding +
+    'Project > Project change log... shows GitHub-style red/green inline diffs for text edits, ' +
+    'dictionary updates, and Find & Replace batches (with Ctrl+wheel zoom and a resizable splitter). ' +
+    'Help > Crash & error logs... lets you inspect and copy diagnostic reports.');
 
 var
   GuideForm: TForm = nil;

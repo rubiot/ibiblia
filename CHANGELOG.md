@@ -6,7 +6,12 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.095 (2026-11-22) — Add Match Exact Words Option to Find & Replace
+### 0. Version 1.1.0.096 (2026-11-22) — Update In-App User Guide Through v1.1.0.096
+
+* **Updated In-App User Guide (`unitabout.pas`, `FormNewFeaturesGuide.pas`):** Brought both the `Shift+F1` New Features User Guide (`TFormUserGuide` and `FormNewFeaturesGuide`) up to date through **`v1.1.0.096`**, covering Notepad++-style Find & Replace (`Ctrl+F`/`Ctrl+H`, Normal/Extended/PCRE Regex, Match exact words, Range filter, Unassociated Destination/Source words, LCS association-preserving replace, 7-step Undo/Redo, Transparency), Activate window on mouse hover, Night default skin, Export Module Properties Preview/Raw tabs, and Project Change Log inline diffs.
+* Files: unitabout.pas, FormNewFeaturesGuide.pas, iBiblia.lpi, iBiblia-linux.lpi, CHANGELOG.md, historico.txt, Histórico.txt.
+
+### 0a. Version 1.1.0.095 (2026-11-22) — Add Match Exact Words Option to Find & Replace
 
 * **Match Exact Words (`FormFindInProject.pas`):** Added **Match exact words** to the **Options** group box in Find & Replace with UTF-8-aware word-boundary checking so partial word fragments are skipped in Normal, Extended, and Unassociated word searches, and increased the Options group box height (`172 px`) so all 5 checkboxes fit cleanly on Windows and Linux GTK2.
 * Files: FormFindInProject.pas, iBiblia.lpi, iBiblia-linux.lpi, unitabout.pas, CHANGELOG.md, historico.txt, Histórico.txt.
