@@ -6,7 +6,12 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.094 (2026-11-22) — Fix EAbstractError Crash in Unassociated Word Search
+### 0. Version 1.1.0.095 (2026-11-22) — Add Match Exact Words Option to Find & Replace
+
+* **Match Exact Words (`FormFindInProject.pas`):** Added **Match exact words** to the **Options** group box in Find & Replace with UTF-8-aware word-boundary checking so partial word fragments are skipped in Normal, Extended, and Unassociated word searches, and increased the Options group box height (`172 px`) so all 5 checkboxes fit cleanly on Windows and Linux GTK2.
+* Files: FormFindInProject.pas, iBiblia.lpi, iBiblia-linux.lpi, unitabout.pas, CHANGELOG.md, historico.txt, Histórico.txt.
+
+### 0a. Version 1.1.0.094 (2026-11-22) — Fix EAbstractError Crash in Unassociated Word Search
 
 * **Concrete Tokenizer Instantiation (`FormFindInProject.pas`):** Fixed `EAbstractError: Abstract method called` when running **Unassociated Destination words** or **Unassociated Source words** in Find & Replace by instantiating the concrete tokenizer via `TTokenizerFactory.CreatePreferredTokenizer(PairsXML)` instead of abstract `TONTTokenizer.Create(PairsXML)`.
 * Files: FormFindInProject.pas, iBiblia.lpi, iBiblia-linux.lpi, unitabout.pas, CHANGELOG.md, historico.txt, Histórico.txt.

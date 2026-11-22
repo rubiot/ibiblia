@@ -1,4 +1,7 @@
-﻿Version 1.1.0.094 (64-bit Edition) - 2026-11-22
+﻿Version 1.1.0.095 (64-bit Edition) - 2026-11-22
+- Added Match exact words option to Find & Replace in Project (UTF-8 word-boundary matching) with expanded GTK2-safe Options box height.
+
+Version 1.1.0.094 (64-bit Edition) - 2026-11-22
 - Fixed EAbstractError crash when searching Unassociated Destination/Source words in Find & Replace by using TTokenizerFactory.CreatePreferredTokenizer.
 
 Version 1.1.0.093 (64-bit Edition) - 2026-11-22

@@ -114,6 +114,9 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.095 (64-bit Edition) - 2026-11-22' + LineEnding +
+  '- Added ''Match exact words'' option to Find & Replace in Project (UTF-8 word-boundary matching across Normal, Extended, and Unassociated word searches, with extra GTK2 vertical clearance in the Options box).' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.094 (64-bit Edition) - 2026-11-22' + LineEnding +
   '- Fixed EAbstractError crash when searching Unassociated Destination/Source words in Find & Replace (instantiate concrete tokenizer via TTokenizerFactory.CreatePreferredTokenizer instead of abstract TONTTokenizer.Create).' + LineEnding +
   '' + LineEnding +
@@ -765,7 +768,7 @@ begin
     ver := '';
   end;
   if (ver = '') or (ver = '1.1.0.0') or (ver = '1.1.0.1') then
-    ver := '1.1.0.094';
+    ver := '1.1.0.095';
 
   LabelVersion := TLabel.Create(Self);
   LabelVersion.Parent := Self;

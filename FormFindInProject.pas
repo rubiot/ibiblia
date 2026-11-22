@@ -82,6 +82,7 @@ type
     FRangeCombo: TComboBox;
 
     FOptionsGroup: TGroupBox;
+    FExactWordsCheck: TCheckBox;
     FMatchCaseCheck: TCheckBox;
     FWrapAroundCheck: TCheckBox;
     FKeepAssocCheck: TCheckBox;
@@ -192,6 +193,7 @@ resourcestring
   SFindRange = 'Ran&ge:';
   SSwapHint = 'Swap Find what and Replace with';
   SOptionsTitle = 'Options';
+  SExactWords = 'Match &exact words';
   SMatchCase = 'Match &case';
   SWrapAround = 'Wrap aro&und';
   SKeepAssociations = '&Keep word associations';
@@ -367,6 +369,33 @@ begin
     else
       Result := Result + C;
   end;
+end;
+
+function IsWordByteAt(const S: string; ByteIndex1Based: Integer): Boolean;
+var
+  C: Byte;
+begin
+  if (ByteIndex1Based < 1) or (ByteIndex1Based > Length(S)) then
+    Exit(False);
+  C := Ord(S[ByteIndex1Based]);
+  if C >= $80 then
+    Exit(True); { UTF-8 non-ASCII letter/diacritic }
+  Result := (Chr(C) in ['A'..'Z', 'a'..'z', '0'..'9', '_']);
+end;
+
+function PassesExactWordCheck(const Input: string; MatchStart0Based, MatchByteLen: Integer): Boolean;
+var
+  Start1, End1: Integer;
+begin
+  if MatchByteLen <= 0 then
+    Exit(True);
+  Start1 := MatchStart0Based + 1;
+  End1 := MatchStart0Based + MatchByteLen;
+  if IsWordByteAt(Input, Start1) and IsWordByteAt(Input, Start1 - 1) then
+    Exit(False);
+  if IsWordByteAt(Input, End1) and IsWordByteAt(Input, End1 + 1) then
+    Exit(False);
+  Result := True;
 end;
 
 function UTF8CharByteLen(B: Byte): Integer;
@@ -707,7 +736,7 @@ begin
   FTopContainer.Parent := Self;
   FTopContainer.Top := 32;
   FTopContainer.Align := alTop;
-  FTopContainer.Height := 288;
+  FTopContainer.Height := 298;
   FTopContainer.BevelOuter := bvNone;
 
   { 2a. Right-hand action button column (AlRight = never clips!) }
@@ -754,7 +783,7 @@ begin
 
   FCloseButton := TButton.Create(Self);
   FCloseButton.Parent := FButtonsPanel;
-  FCloseButton.SetBounds(6, 248, 140, 28);
+  FCloseButton.SetBounds(6, 258, 140, 28);
   FCloseButton.Cancel := True;
   FCloseButton.OnClick := @CloseButtonClick;
 
@@ -814,23 +843,27 @@ begin
   FOptionsGroup := TGroupBox.Create(Self);
   FOptionsGroup.Parent := FLeftPanel;
 
+  FExactWordsCheck := TCheckBox.Create(Self);
+  FExactWordsCheck.Parent := FOptionsGroup;
+  FExactWordsCheck.SetBounds(10, 6, 200, 22);
+
   FMatchCaseCheck := TCheckBox.Create(Self);
   FMatchCaseCheck.Parent := FOptionsGroup;
-  FMatchCaseCheck.SetBounds(10, 8, 200, 24);
+  FMatchCaseCheck.SetBounds(10, 32, 200, 22);
 
   FWrapAroundCheck := TCheckBox.Create(Self);
   FWrapAroundCheck.Parent := FOptionsGroup;
-  FWrapAroundCheck.SetBounds(10, 36, 200, 24);
+  FWrapAroundCheck.SetBounds(10, 58, 200, 22);
   FWrapAroundCheck.Checked := True;
 
   FKeepAssocCheck := TCheckBox.Create(Self);
   FKeepAssocCheck.Parent := FOptionsGroup;
-  FKeepAssocCheck.SetBounds(10, 64, 200, 24);
+  FKeepAssocCheck.SetBounds(10, 84, 200, 22);
   FKeepAssocCheck.Checked := True;
 
   FRawTagsCheck := TCheckBox.Create(Self);
   FRawTagsCheck.Parent := FOptionsGroup;
-  FRawTagsCheck.SetBounds(10, 92, 200, 24);
+  FRawTagsCheck.SetBounds(10, 110, 200, 22);
   FRawTagsCheck.OnClick := @RawTagsCheckClick;
 
   { Search Mode GroupBox }
@@ -890,7 +923,7 @@ begin
   { 3. Status bar above results list }
   FStatusPanel := TPanel.Create(Self);
   FStatusPanel.Parent := Self;
-  FStatusPanel.Top := 320;
+  FStatusPanel.Top := 330;
   FStatusPanel.Align := alTop;
   FStatusPanel.Height := 26;
   FStatusPanel.BevelOuter := bvNone;
@@ -955,7 +988,7 @@ begin
 
   { Row 4: Options, Search Mode, Transparency GroupBoxes }
   BoxTop := 114;
-  BoxH := 162;
+  BoxH := 172;
   Gap := 8;
   TotalBoxW := Max(340, RightEdge - Pad - (Gap * 2));
   W1 := (TotalBoxW * 34) div 100;
@@ -966,6 +999,7 @@ begin
   FModeGroup.SetBounds(Pad + W1 + Gap, BoxTop, W2, BoxH);
   FTransGroup.SetBounds(Pad + W1 + Gap + W2 + Gap, BoxTop, W3, BoxH);
 
+  FExactWordsCheck.Width := Max(80, FOptionsGroup.ClientWidth - 18);
   FMatchCaseCheck.Width := Max(80, FOptionsGroup.ClientWidth - 18);
   FWrapAroundCheck.Width := Max(80, FOptionsGroup.ClientWidth - 18);
   FKeepAssocCheck.Width := Max(80, FOptionsGroup.ClientWidth - 18);
@@ -1007,6 +1041,7 @@ begin
   FSwapButton.Hint := SSwapHint;
 
   FOptionsGroup.Caption := SOptionsTitle;
+  FExactWordsCheck.Caption := SExactWords;
   FMatchCaseCheck.Caption := SMatchCase;
   FWrapAroundCheck.Caption := SWrapAround;
   FKeepAssocCheck.Caption := SKeepAssociations;
@@ -1069,6 +1104,7 @@ end;
 procedure TFrmFindInProject.UpdateModeUI;
 begin
   FDotMatchesNewlineCheck.Enabled := FModeRegexRadio.Checked;
+  FExactWordsCheck.Enabled := not FModeRegexRadio.Checked;
 end;
 
 procedure TFrmFindInProject.UpdateTabUI;
@@ -1356,17 +1392,21 @@ begin
   M := Rx.Match(Input, Offset, []);
   while M.Matched do
   begin
-    Inc(Result);
-    if DoReplace then
+    if (Mode = fsmRegex) or (not FExactWordsCheck.Checked) or
+       PassesExactWordCheck(Input, M.Index, M.Length) then
     begin
-      if M.Index > FirstPos then
-        OutputText := OutputText + Copy(Input, FirstPos + 1, M.Index - FirstPos);
-      if Mode = fsmRegex then
-        SubVal := ExpandNppRegexReplacement(RawReplacement, M)
-      else
-        SubVal := LiteralRepl;
-      OutputText := OutputText + SubVal;
-      FirstPos := M.Index + M.Length;
+      Inc(Result);
+      if DoReplace then
+      begin
+        if M.Index > FirstPos then
+          OutputText := OutputText + Copy(Input, FirstPos + 1, M.Index - FirstPos);
+        if Mode = fsmRegex then
+          SubVal := ExpandNppRegexReplacement(RawReplacement, M)
+        else
+          SubVal := LiteralRepl;
+        OutputText := OutputText + SubVal;
+        FirstPos := M.Index + M.Length;
+      end;
     end;
     Offset := Max(M.Index + M.Length, M.Index + 1);
     if Offset > Length(Input) then
