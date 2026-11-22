@@ -114,6 +114,9 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.092 (64-bit Edition) - 2026-11-22' + LineEnding +
+  '- Added automatic window activation on mouse hover (View -> Activate window on mouse hover, enabled by default): moving the mouse onto any visible part of Dark-Skinned iBiblia brings it into active focus without clicking, while avoiding focus theft during drags, Alt+Tab, or overlapping windows.' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.091 (64-bit Edition) - 2026-11-22' + LineEnding +
   '- Added 7-step session Undo (Ctrl+Z) and Redo (Ctrl+Y) buttons and shortcuts to Find & Replace in Project, restoring modified verses (even after the project has been saved) with confirmation prompts, association preservation, Project Change Log entries, and auto-save.' + LineEnding +
   '- Removed the redundant Preview Replace and Count buttons to keep the Find & Replace button column streamlined.' + LineEnding +
@@ -755,7 +758,7 @@ begin
     ver := '';
   end;
   if (ver = '') or (ver = '1.1.0.0') or (ver = '1.1.0.1') then
-    ver := '1.1.0.091';
+    ver := '1.1.0.092';
 
   LabelVersion := TLabel.Create(Self);
   LabelVersion.Parent := Self;

@@ -6,7 +6,12 @@
 
 ## What's New & Fixed in v1.1.0
 
-### 0. Version 1.1.0.091 (2026-11-22) — Find & Replace 7-Step Undo (Ctrl+Z) / Redo (Ctrl+Y) & Streamlined Buttons
+### 0. Version 1.1.0.092 (2026-11-22) — Activate iBiblia Window on Mouse Hover
+
+* **Hover-to-Activate Window (`formprincipal.pas`):** Moving the mouse onto any visible part of Dark-Skinned iBiblia (main window or floating tool dialogs) automatically activates the window as if clicked, making side-by-side work with theWord and Timotheos seamless. Includes safety guards against stealing focus through overlapping windows, while mouse buttons are held down, or when Alt+Tabbing away without moving the cursor. Toggleable via **View → Activate window on mouse hover** (enabled by default, saved in `iBiblia.ini`).
+* Files: formprincipal.pas, iBiblia.lpi, iBiblia-linux.lpi, unitabout.pas, CHANGELOG.md, historico.txt, Histórico.txt.
+
+### 0a. Version 1.1.0.091 (2026-11-22) — Find & Replace 7-Step Undo (Ctrl+Z) / Redo (Ctrl+Y) & Streamlined Buttons
 
 * **7-Step Session Undo / Redo (`FormFindInProject.pas`):** Added **Undo (`Ctrl+Z`)** and **Redo (`Ctrl+Y`)** buttons with live history counters (`Undo (N)` / `Redo (N)`) tracking up to 7 back/forward Find & Replace operations per session. Undo and Redo prompt for confirmation, restore exact pre/post-replacement verse texts even after the project has been saved, preserve word associations, log to **Project → Project change log...**, and save automatically.
 * **Streamlined Button Column (`FormFindInProject.pas`):** Removed the **Preview Replace** and **Count** buttons so the right-hand column cleanly holds **Find Next**, **Find Prev**, **Find All**, **Replace**, **Replace All**, **Undo**, **Redo**, and **Close**.

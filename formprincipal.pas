@@ -261,6 +261,11 @@ type
     FTreeRearrangeItem: TMenuItem;
     FTreeOldWindowProc: TWndMethod;
     FAlwaysOnTopEnabled: Boolean;
+    FHoverActivateEnabled: Boolean;
+    FHoverActivateMenuItem: TMenuItem;
+    FHoverActivateTimer: TTimer;
+    FLastHoverCursorPos: TPoint;
+    FLastHoverActivateTick: QWord;
     FDockPopupRightEnabled: Boolean;
     FDockPopupRightMenuItem: TMenuItem;
     FDockPopupLeftEnabled: Boolean;
@@ -402,6 +407,9 @@ type
     procedure PersistGlobalPreference(const Key: string;
       Value: Integer); overload;
     procedure SetAlwaysOnTopEnabled(AEnabled: Boolean);
+    procedure SetHoverActivateEnabled(AEnabled: Boolean);
+    procedure HoverActivateMenuItemClick(Sender: TObject);
+    procedure HoverActivateTimerTick(Sender: TObject);
     procedure SetAutoSaveEnabled(AEnabled: Boolean);
     procedure ActionFindInProjectExecute(Sender: TObject);
     procedure ActionReplaceInProjectExecute(Sender: TObject);
@@ -744,6 +752,7 @@ resourcestring
   SStrongsCountTags = 'Count tags';
   SBoldStrongsMenu = 'Highlight words with Strong in bold';
   SAlwaysOnTopMenu = '&Keep window always on top';
+  SHoverActivateMenu = 'Activate window on mouse &hover';
   SDockPopupRightMenu = '&Dock Word Definition Popup to Right Edge';
   SDockPopupLeftMenu = '&Dock Word Definition Popup to Left Edge';
   SToolsMenu = '&Tools';
@@ -1072,6 +1081,111 @@ begin
   else
     FormStyle := fsNormal;
   PersistGlobalPreference('alwaysontop', FAlwaysOnTopEnabled);
+end;
+
+procedure TMainForm.SetHoverActivateEnabled(AEnabled: Boolean);
+begin
+  FHoverActivateEnabled := AEnabled;
+  if Assigned(FHoverActivateMenuItem) then
+    FHoverActivateMenuItem.Checked := FHoverActivateEnabled;
+  if Assigned(FHoverActivateTimer) then
+    FHoverActivateTimer.Enabled := FHoverActivateEnabled and not ApplicationShuttingDown;
+  PersistGlobalPreference('hover.activate', FHoverActivateEnabled);
+end;
+
+procedure TMainForm.HoverActivateMenuItemClick(Sender: TObject);
+begin
+  SetHoverActivateEnabled(not FHoverActivateEnabled);
+end;
+
+procedure TMainForm.HoverActivateTimerTick(Sender: TObject);
+var
+  Pt: TPoint;
+  NowTick: QWord;
+  {$IFDEF WINDOWS}
+  HoverHwnd, RootHwnd, FgWnd: HWND;
+  HoverPid, FgThread, CurThread: DWORD;
+  Attached: Boolean;
+  {$ELSE}
+  I: Integer;
+  F, TargetForm: TCustomForm;
+  {$ENDIF}
+begin
+  if (not FHoverActivateEnabled) or ApplicationShuttingDown or Application.Terminated or
+     (not Visible) or (WindowState = wsMinimized) or (fsModal in FormState) then
+    Exit;
+
+  Pt := Mouse.CursorPos;
+  if Application.Active then
+  begin
+    FLastHoverCursorPos := Pt;
+    Exit;
+  end;
+
+  if (Pt.X = FLastHoverCursorPos.X) and (Pt.Y = FLastHoverCursorPos.Y) then
+    Exit;
+  FLastHoverCursorPos := Pt;
+
+  NowTick := GetTickCount64;
+  if (FLastHoverActivateTick <> 0) and (NowTick - FLastHoverActivateTick < 250) then
+    Exit;
+
+  {$IFDEF WINDOWS}
+  if ((Windows.GetAsyncKeyState(VK_LBUTTON) and $8000) <> 0) or
+     ((Windows.GetAsyncKeyState(VK_RBUTTON) and $8000) <> 0) or
+     ((Windows.GetAsyncKeyState(VK_MBUTTON) and $8000) <> 0) then
+    Exit;
+
+  HoverHwnd := Windows.WindowFromPoint(Pt);
+  if HoverHwnd = 0 then
+    Exit;
+  HoverPid := 0;
+  Windows.GetWindowThreadProcessId(HoverHwnd, @HoverPid);
+  if HoverPid <> Windows.GetCurrentProcessId then
+    Exit;
+
+  RootHwnd := Windows.GetAncestor(HoverHwnd, GA_ROOT);
+  if RootHwnd = 0 then
+    RootHwnd := Handle;
+
+  FLastHoverActivateTick := NowTick;
+  FgWnd := Windows.GetForegroundWindow;
+  FgThread := 0;
+  CurThread := Windows.GetCurrentThreadId;
+  if FgWnd <> 0 then
+    FgThread := Windows.GetWindowThreadProcessId(FgWnd, nil);
+  Attached := (FgThread <> 0) and (FgThread <> CurThread) and
+    Windows.AttachThreadInput(FgThread, CurThread, True);
+  try
+    Windows.BringWindowToTop(RootHwnd);
+    Windows.SetForegroundWindow(RootHwnd);
+    Windows.SetActiveWindow(RootHwnd);
+  finally
+    if Attached then
+      Windows.AttachThreadInput(FgThread, CurThread, False);
+  end;
+  {$ELSE}
+  TargetForm := nil;
+  for I := 0 to Screen.CustomFormCount - 1 do
+  begin
+    F := Screen.CustomForms[I];
+    if Assigned(F) and F.Visible and (F.WindowState <> wsMinimized) and
+       PtInRect(F.BoundsRect, Pt) then
+    begin
+      TargetForm := F;
+      if F <> Self then
+        Break;
+    end;
+  end;
+  if TargetForm = nil then
+    Exit;
+
+  FLastHoverActivateTick := NowTick;
+  Application.BringToFront;
+  TargetForm.BringToFront;
+  if TargetForm.HandleAllocated then
+    LCLIntf.SetForegroundWindow(TargetForm.Handle);
+  {$ENDIF}
 end;
 
 procedure TMainForm.SetAutoSaveEnabled(AEnabled: Boolean);
@@ -1530,6 +1644,11 @@ begin
   FVerseInformationMenu.Add(MenuItemBoldStrongs);
   MenuItem20.Add(FVerseInformationMenu);
   MenuItem20.Add(MenuItemAlwaysOnTop);
+  FHoverActivateMenuItem := TMenuItem.Create(MainMenu1);
+  FHoverActivateMenuItem.Caption := SHoverActivateMenu;
+  FHoverActivateMenuItem.Checked := FHoverActivateEnabled;
+  FHoverActivateMenuItem.OnClick := @HoverActivateMenuItemClick;
+  MenuItem20.Add(FHoverActivateMenuItem);
   FDockPopupRightMenuItem := TMenuItem.Create(MainMenu1);
   FDockPopupRightMenuItem.Caption := SDockPopupRightMenu;
   FDockPopupRightMenuItem.Checked := FDockPopupRightEnabled;
@@ -5436,6 +5555,16 @@ begin
   FAlwaysOnTopEnabled := opts.ReadBool('opcoes', 'alwaysontop', false);
   if FAlwaysOnTopEnabled then
     FormStyle := fsSystemStayOnTop;
+  FHoverActivateEnabled := opts.ReadBool('opcoes', 'hover.activate', true);
+  FLastHoverCursorPos := Mouse.CursorPos;
+  FLastHoverActivateTick := 0;
+  if not Assigned(FHoverActivateTimer) then
+  begin
+    FHoverActivateTimer := TTimer.Create(Self);
+    FHoverActivateTimer.Interval := 80;
+    FHoverActivateTimer.OnTimer := @HoverActivateTimerTick;
+  end;
+  FHoverActivateTimer.Enabled := FHoverActivateEnabled;
   FDockPopupRightEnabled := opts.ReadBool('opcoes', 'popup.dock.right', false);
   FDockPopupLeftEnabled := opts.ReadBool('opcoes', 'popup.dock.left', false);
   if FDockPopupRightEnabled and FDockPopupLeftEnabled then
@@ -5593,6 +5722,8 @@ begin
   MarkCrashSessionCleanShutdown;
   if Assigned(FStripTimer) then
     FStripTimer.Enabled := False;
+  if Assigned(FHoverActivateTimer) then
+    FHoverActivateTimer.Enabled := False;
   Screen.RemoveHandlerActiveFormChanged(@ScreenActiveFormChanged);
   Screen.RemoveHandlerRemoveForm(@ScreenRemoveForm);
   Application.RemoveAsyncCalls(Self);
@@ -5633,6 +5764,7 @@ begin
   opts.WriteInteger('opcoes', 'strongscountmode', Integer(FStrongsCountMode));
   opts.WriteString('opcoes', 'language', language);
   opts.WriteBool('opcoes', 'alwaysontop', FAlwaysOnTopEnabled);
+  opts.WriteBool('opcoes', 'hover.activate', FHoverActivateEnabled);
   opts.WriteBool('opcoes', 'popup.dock.right', FDockPopupRightEnabled);
   opts.WriteBool('opcoes', 'popup.dock.left', FDockPopupLeftEnabled);
   opts.WriteInteger('opcoes', 'popuptrigger', LongInt(FPopupTrigger));
@@ -7325,6 +7457,8 @@ begin
   MenuItemStrongsCountStrongs.Caption := SStrongsCountTags;
   MenuItemBoldStrongs.Caption := SBoldStrongsMenu;
   MenuItemAlwaysOnTop.Caption := SAlwaysOnTopMenu;
+  if Assigned(FHoverActivateMenuItem) then
+    FHoverActivateMenuItem.Caption := SHoverActivateMenu;
   if Assigned(FDockPopupRightMenuItem) then
   begin
     FDockPopupRightMenuItem.Caption := SDockPopupRightMenu;
