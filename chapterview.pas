@@ -591,35 +591,17 @@ begin
     Width := 500;
     FNoteView.TextStyle.Font.Name := AStyle.Font.Name;
     FNoteView.TextStyle.Font.Size := AStyle.Font.Size - 1;
-    if CurrentSkin.Id = skClassic then
-    begin
-      Color := $00CCFBFB;
-      FNoteView.Background.Color := $00CCFBFB;
-      FNoteView.Colors.BkGnd := $00CCFBFB;
-      FNoteView.TextStyle.Font.Color := clWindowText;
-    end
-    else
-    begin
-      Color := CurrentSkin.NoteBg;
-      FNoteView.Background.Color := CurrentSkin.NoteBg;
-      FNoteView.Colors.BkGnd := CurrentSkin.NoteBg;
-      FNoteView.Colors.SelBkGnd := CurrentSkin.SelectedBg;
-      FNoteView.Colors.SelText := CurrentSkin.SelectedText;
-      FNoteView.Colors.SelBkGndFocused := CurrentSkin.SelectedBg;
-      FNoteView.Colors.SelTextFocused := CurrentSkin.SelectedText;
-      FNoteView.TextStyle.Font.Color := CurrentSkin.NoteText;
-    end;
+    Color := CurrentSkin.NoteBg;
+    FNoteView.Background.Color := CurrentSkin.NoteBg;
+    FNoteView.Colors.BkGnd := CurrentSkin.NoteBg;
+    FNoteView.Colors.SelBkGnd := CurrentSkin.SelectedBg;
+    FNoteView.Colors.SelText := CurrentSkin.SelectedText;
+    FNoteView.Colors.SelBkGndFocused := CurrentSkin.SelectedBg;
+    FNoteView.Colors.SelTextFocused := CurrentSkin.SelectedText;
+    FNoteView.TextStyle.Font.Color := CurrentSkin.NoteText;
     FNoteView.SetNoteBody(UTF8Decode(AText));
-    if CurrentSkin.Id = skClassic then
-    begin
-      FNoteView.Background.Color := $00CCFBFB;
-      FNoteView.Colors.BkGnd := $00CCFBFB;
-    end
-    else
-    begin
-      FNoteView.Background.Color := CurrentSkin.NoteBg;
-      FNoteView.Colors.BkGnd := CurrentSkin.NoteBg;
-    end;
+    FNoteView.Background.Color := CurrentSkin.NoteBg;
+    FNoteView.Colors.BkGnd := CurrentSkin.NoteBg;
     FLastBody := AText;
     FLastFontName := AStyle.Font.Name;
     FLastFontSize := AStyle.Font.Size;
@@ -634,10 +616,7 @@ constructor TNoteWindow.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
 
-  if CurrentSkin.Id = skClassic then
-    Color := clWindow
-  else
-    Color := CurrentSkin.NoteBg;
+  Color := CurrentSkin.NoteBg;
   FLastSkinId := -1;
   FNoteView:= nil;
 end;
@@ -1537,7 +1516,7 @@ begin
                 begin
                   Font.Size := Font.Size + 1;
                   Font.Style := [fsBold, fsItalic];
-                  Font.Color := clDefault;
+                  Font.Color := CurrentSkin.WindowText;
                 end;
                 '3':
                 begin
@@ -1682,10 +1661,7 @@ begin
 
   ResetStyleStack;
   CurrentStyle.Font.Size := max(FFontSize-2, 2); // using smaller font
-  if CurrentSkin.Id = skClassic then
-    CurrentStyle.Font.Color := clWindowText
-  else
-    CurrentStyle.Font.Color := CurrentSkin.WindowText;
+  CurrentStyle.Font.Color := CurrentSkin.WindowText;
 
   Blocks.AddParagraph();
   Blocks.AddParagraph();
@@ -1752,10 +1728,7 @@ begin
   note := FNotes[noteIndex];
 
   HighlightRange(note.Range, clDefault);
-  if CurrentSkin.Id = skClassic then
-    HighlightRange(FVerseRanges[note.Verse], clSilver)
-  else
-    HighlightRange(FVerseRanges[note.Verse], CurrentSkin.VerseHighlightBg);
+  HighlightRange(FVerseRanges[note.Verse], CurrentSkin.VerseHighlightBg);
 end;
 
 procedure TChapterView.HandleTranslationMemoryMoreClick(Sender: TObject);
@@ -2404,21 +2377,18 @@ end;
 
 procedure TChapterView.ApplySkinColors;
 begin
+  Color := CurrentSkin.WindowBg;
+  Background.Color := CurrentSkin.WindowBg;
+  Colors.BkGnd := CurrentSkin.WindowBg;
   if CurrentSkin.Id = skClassic then
   begin
-    Color := clWindow;
-    Background.Color := clWindow;
-    Colors.BkGnd := clWindow;
-    Colors.SelBkGnd := clHighlight;
-    Colors.SelText := clHighlightText;
-    Colors.SelBkGndFocused := clHighlight;
-    Colors.SelTextFocused := clHighlightText;
+    Colors.SelBkGnd := CurrentSkin.PointedBg;
+    Colors.SelText := CurrentSkin.PointedText;
+    Colors.SelBkGndFocused := CurrentSkin.PointedBg;
+    Colors.SelTextFocused := CurrentSkin.PointedText;
   end
   else
   begin
-    Color := CurrentSkin.WindowBg;
-    Background.Color := CurrentSkin.WindowBg;
-    Colors.BkGnd := CurrentSkin.WindowBg;
     Colors.SelBkGnd := CurrentSkin.SelectedBg;
     Colors.SelText := CurrentSkin.SelectedText;
     Colors.SelBkGndFocused := CurrentSkin.SelectedBg;
@@ -2434,10 +2404,7 @@ begin
   if Assigned(FRawMemo) then
   begin
     FRawMemo.Color := Colors.BkGnd;
-    if CurrentSkin.Id = skClassic then
-      FRawMemo.Font.Color := clWindowText
-    else
-      FRawMemo.Font.Color := CurrentSkin.WindowText;
+    FRawMemo.Font.Color := CurrentSkin.WindowText;
     ApplyDarkModeToControl(FRawMemo, CurrentSkin.IsDark);
     {$IFDEF WINDOWS}
     HookEditControl(FRawMemo);
@@ -2452,10 +2419,7 @@ begin
   inherited SetupDefaultStyle;
   TextStyle.Font.Size := FFontSize;
   TextStyle.Font.Name := FFontName;
-  if CurrentSkin.Id = skClassic then
-    TextStyle.Font.Color := clWindowText
-  else
-    TextStyle.Font.Color := CurrentSkin.WindowText;
+  TextStyle.Font.Color := CurrentSkin.WindowText;
   TextStyle.ScriptPosition := tpoNormal;
   ParaStyle.FirstIndent := 0;
   ParaStyle.LineSpacingFactor := 1.15;
@@ -3510,10 +3474,7 @@ begin
     if (FRenderedChapterCurrentVerse > 0) and
        (FRenderedChapterCurrentVerse < Length(FVerseRanges)) then
       HighlightRange(FVerseRanges[FRenderedChapterCurrentVerse], clDefault);
-    if CurrentSkin.Id = skClassic then
-      HighlightRange(FVerseRanges[ACurrentVerse], clSilver)
-    else
-      HighlightRange(FVerseRanges[ACurrentVerse], CurrentSkin.VerseHighlightBg);
+    HighlightRange(FVerseRanges[ACurrentVerse], CurrentSkin.VerseHighlightBg);
     FRenderedChapterCurrentVerse := ACurrentVerse;
   finally
     Blocks.UnLockUpdate;

@@ -873,7 +873,7 @@ begin
   end;
 
   if ASkin.Id = skClassic then
-    DefaultTextColor := ColorToRGB(clWindowText)
+    DefaultTextColor := ColorToRGB(ASkin.WindowText)
   else
     DefaultTextColor := ColorToRGB(ASkin.NoteText);
 
@@ -1388,7 +1388,7 @@ begin
   if CurrentSkin.Id = skClassic then
   begin
     Memo.Color := clWhite;
-    Memo.Font.Color := clWindowText;
+    Memo.Font.Color := CurrentSkin.WindowText;
     Panel1.Color := clWhite;
     Panel2.Color := clWhite;
   end
@@ -1435,9 +1435,9 @@ begin
     Panel1.Color := clWhite;
     Panel2.Color := clWhite;
     RichMemoStrong.Color := clWhite;
-    RichMemoStrong.Font.Color := clWindowText;
+    RichMemoStrong.Font.Color := CurrentSkin.WindowText;
     RichMemoMorphology.Color := clWhite;
-    RichMemoMorphology.Font.Color := clWindowText;
+    RichMemoMorphology.Font.Color := CurrentSkin.WindowText;
   end
   else
   begin
@@ -1450,13 +1450,10 @@ begin
   end;
   {$IFNDEF WINDOWS}
   { the tab strips are drawn by GTK: give them the skin colours }
-  if CurrentSkin.Id <> skClassic then
-  begin
-    TabControlStrongs.Color := CurrentSkin.PanelBg;
-    TabControlStrongs.Font.Color := CurrentSkin.PanelText;
-    TabControlMorphologies.Color := CurrentSkin.PanelBg;
-    TabControlMorphologies.Font.Color := CurrentSkin.PanelText;
-  end;
+  TabControlStrongs.Color := CurrentSkin.PanelBg;
+  TabControlStrongs.Font.Color := CurrentSkin.PanelText;
+  TabControlMorphologies.Color := CurrentSkin.PanelBg;
+  TabControlMorphologies.Font.Color := CurrentSkin.PanelText;
   {$ENDIF}
   Splitter1.Invalidate;
 {$IFDEF WINDOWS}

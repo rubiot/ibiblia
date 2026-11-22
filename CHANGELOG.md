@@ -6,6 +6,10 @@
 
 ## What's New & Fixed in v1.1.0
 
+### v1.1.0.097 (2026-11-22)
+- Fixed Classic (Light) skin on Linux dark desktop themes (e.g., KDE Breeze Dark): disabled GTK2 pixmap theme engines (`engine "" {}` with `: highest` priority) so dropdown menus, submenus, buttons, and active notebook tabs paint cleanly in light colors.
+- Fixed Classic (Light) startup and project-change skinning by always applying `ApplyActiveSkin` and `ApplyDialogStyle` and replacing hardcoded `clWindow`/`clWindowText`/`clBtnFace` fallbacks across verse panels, chapter view, Bible tree, top status header, dictionary popup, note previews, and About/Changelog dialogs with `CurrentSkin` colors.
+
 ### 0. Version 1.1.0.096 (2026-11-22) — Update In-App User Guide Through v1.1.0.096
 
 * **Updated In-App User Guide (`unitabout.pas`, `FormNewFeaturesGuide.pas`):** Brought both the `Shift+F1` New Features User Guide (`TFormUserGuide` and `FormNewFeaturesGuide`) up to date through **`v1.1.0.096`**, covering Notepad++-style Find & Replace (`Ctrl+F`/`Ctrl+H`, Normal/Extended/PCRE Regex, Match exact words, Range filter, Unassociated Destination/Source words, LCS association-preserving replace, 7-step Undo/Redo, Transparency), Activate window on mouse hover, Night default skin, Export Module Properties Preview/Raw tabs, and Project Change Log inline diffs.

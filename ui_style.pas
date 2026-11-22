@@ -291,8 +291,7 @@ begin
   begin
     LoadApplicationIcon(AForm.Icon);
     StyleDialogChrome(AForm);
-    if CurrentSkin.Id <> skClassic then
-      ApplySkinToForm(AForm, CurrentSkin);
+    ApplySkinToForm(AForm, CurrentSkin);
   end;
 end;
 

@@ -151,10 +151,7 @@ end;
 
 function TTranslationMemoryFocusController.NormalBorderColor: TColor;
 begin
-  if CurrentSkin.Id = skClassic then
-    Result := clWindow
-  else
-    Result := CurrentSkin.WindowBg;
+  Result := CurrentSkin.WindowBg;
   if not Assigned(FMemo) then
     Exit;
   if FMemo.Colors.BkGnd <> clNone then
@@ -194,8 +191,8 @@ begin
   begin
     if CurrentSkin.Id = skClassic then
     begin
-      Paragraph.ParaStyle.BorderColor := clHighlight;
-      Paragraph.ParaStyle.Brush.Color := clInfoBk;
+      Paragraph.ParaStyle.BorderColor := CurrentSkin.PointedBg;
+      Paragraph.ParaStyle.Brush.Color := CurrentSkin.NoteBg;
     end
     else
     begin

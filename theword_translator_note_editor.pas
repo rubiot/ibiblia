@@ -731,9 +731,9 @@ begin
   FMemo.BorderStyle := bsSingle;
   if CurrentSkin.Id = skClassic then
   begin
-    FMemo.Background.Color := clWindow;
-    FMemo.Colors.BkGnd := clWindow;
-    FMemo.TextStyle.Font.Color := clWindowText;
+    FMemo.Background.Color := CurrentSkin.WindowBg;
+    FMemo.Colors.BkGnd := CurrentSkin.WindowBg;
+    FMemo.TextStyle.Font.Color := CurrentSkin.WindowText;
   end
   else
   begin
@@ -770,9 +770,9 @@ begin
   if CurrentSkin.Id = skClassic then
   begin
     Color := UISurfaceColor;
-    FMemo.Background.Color := clWindow;
-    FMemo.Colors.BkGnd := clWindow;
-    FMemo.TextStyle.Font.Color := clWindowText;
+    FMemo.Background.Color := CurrentSkin.WindowBg;
+    FMemo.Colors.BkGnd := CurrentSkin.WindowBg;
+    FMemo.TextStyle.Font.Color := CurrentSkin.WindowText;
   end
   else
   begin
@@ -1015,7 +1015,7 @@ begin
   FMemo.Background.Color := UIContentColor;
   FMemo.Colors.BkGnd := UIContentColor;
   if CurrentSkin.Id = skClassic then
-    FMemo.TextStyle.Font.Color := clWindowText
+    FMemo.TextStyle.Font.Color := CurrentSkin.WindowText
   else
   begin
     FMemo.Colors.SelBkGnd := CurrentSkin.SelectedBg;

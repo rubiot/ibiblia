@@ -609,21 +609,38 @@ begin
   DefaultDraw := True;
   if IsNodeDisabled(Node) then
   begin
-    Sender.Canvas.Font.Color := clGrayText;
+    Sender.Canvas.Font.Color := CurrentSkin.WindowTextDim;
+    {$IFDEF WINDOWS}
     if CurrentSkin.Id = skClassic then
       Exit;
+    {$ENDIF}
     if cdsSelected in State then
-      Sender.Canvas.Brush.Color := CurrentSkin.HighlightBg
+    begin
+      if CurrentSkin.Id = skClassic then
+        Sender.Canvas.Brush.Color := CurrentSkin.PointedBg
+      else
+        Sender.Canvas.Brush.Color := CurrentSkin.HighlightBg;
+    end
     else
       Sender.Canvas.Brush.Color := CurrentSkin.TreeBg;
     Exit;
   end;
+  {$IFDEF WINDOWS}
   if CurrentSkin.Id = skClassic then
     Exit;
+  {$ENDIF}
   if cdsSelected in State then
   begin
-    Sender.Canvas.Brush.Color := CurrentSkin.HighlightBg;
-    Sender.Canvas.Font.Color := CurrentSkin.HighlightText;
+    if CurrentSkin.Id = skClassic then
+    begin
+      Sender.Canvas.Brush.Color := CurrentSkin.PointedBg;
+      Sender.Canvas.Font.Color := CurrentSkin.PointedText;
+    end
+    else
+    begin
+      Sender.Canvas.Brush.Color := CurrentSkin.HighlightBg;
+      Sender.Canvas.Font.Color := CurrentSkin.HighlightText;
+    end;
   end
   else
   begin
@@ -635,19 +652,24 @@ end;
 procedure TBibleTreeView.ApplySkinColors;
 begin
   // without this LCL draws the names in the Windows theme's dark text colour
+  {$IFDEF WINDOWS}
   if CurrentSkin.Id = skClassic then
   begin
     Options := Options + [tvoThemedDraw];
-    Color := clWindow;
-    Font.Color := clWindowText;
-    ExpandSignColor := clWindowText;
+    Color := CurrentSkin.TreeBg;
+    Font.Color := CurrentSkin.TreeText;
+    ExpandSignColor := CurrentSkin.TreeText;
   end
   else
+  {$ENDIF}
   begin
     Options := Options - [tvoThemedDraw];
     ParentColor := False;
     ParentFont := False;
-    SelectionColor := CurrentSkin.HighlightBg;
+    if CurrentSkin.Id = skClassic then
+      SelectionColor := CurrentSkin.PointedBg
+    else
+      SelectionColor := CurrentSkin.HighlightBg;
     ExpandSignType := tvestArrowFill;
     Color := CurrentSkin.TreeBg;
     Font.Color := CurrentSkin.TreeText;

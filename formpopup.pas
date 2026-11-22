@@ -135,7 +135,7 @@ begin
   if CurrentSkin.Id = skClassic then
   begin
     Memo.Color := clWhite;
-    Memo.Font.Color := clWindowText;
+    Memo.Font.Color := CurrentSkin.WindowText;
   end
   else
   begin

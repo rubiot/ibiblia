@@ -397,10 +397,10 @@ begin
   IBibliaPerfIncrement(ipcTranslationMemoryPreviewRenders);
   if CurrentSkin.Id = skClassic then
   begin
-    Color := clInfoBk;
-    FMemo.Background.Color := clInfoBk;
-    FMemo.Colors.BkGnd := clInfoBk;
-    FMemo.TextStyle.Font.Color := clWindowText;
+    Color := CurrentSkin.NoteBg;
+    FMemo.Background.Color := CurrentSkin.NoteBg;
+    FMemo.Colors.BkGnd := CurrentSkin.NoteBg;
+    FMemo.TextStyle.Font.Color := CurrentSkin.NoteText;
   end
   else
   begin

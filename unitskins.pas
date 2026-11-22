@@ -257,6 +257,7 @@ begin
       Result.TreeText := clBlack;
       Result.PointedBg := MakeRGB($30, $8C, $C6);
       Result.PointedText := clWhite;
+      Result.VerseHighlightBg := MakeRGB($DF, $E4, $EC);
       {$ENDIF}
     end;
 
@@ -622,63 +623,86 @@ begin
         Hi := clBlack;
       Rc :=
         'style "ibiblia-skin" {'#10 +
+        '  engine "" {}'#10 +
         '  bg[NORMAL] = "' + GtkHex(ASkin.PanelBg) + '"'#10 +
         '  bg[PRELIGHT] = "' + GtkHex(GtkBlend(ASkin.PanelBg, clWhite, 14 + 24 * Ord(not ASkin.IsDark))) + '"'#10 +
         '  bg[ACTIVE] = "' + GtkHex(GtkBlend(ASkin.PanelBg, clBlack, 30 - 16 * Ord(not ASkin.IsDark))) + '"'#10 +
         '  bg[INSENSITIVE] = "' + GtkHex(ASkin.PanelBg) + '"'#10 +
-        '  bg[SELECTED] = "' + GtkHex(ASkin.SelectedBg) + '"'#10 +
+        '  bg[SELECTED] = "' + GtkHex(ASkin.PointedBg) + '"'#10 +
         '  fg[NORMAL] = "' + GtkHex(ASkin.PanelText) + '"'#10 +
         '  fg[PRELIGHT] = "' + GtkHex(ASkin.PanelText) + '"'#10 +
         '  fg[ACTIVE] = "' + GtkHex(ASkin.PanelText) + '"'#10 +
-        '  fg[SELECTED] = "' + GtkHex(ASkin.SelectedText) + '"'#10 +
+        '  fg[SELECTED] = "' + GtkHex(ASkin.PointedText) + '"'#10 +
         '  fg[INSENSITIVE] = "' + GtkHex(ASkin.WindowTextDim) + '"'#10 +
+        '  base[NORMAL] = "' + GtkHex(ASkin.WindowBg) + '"'#10 +
+        '  base[PRELIGHT] = "' + GtkHex(ASkin.WindowBg) + '"'#10 +
+        '  base[ACTIVE] = "' + GtkHex(ASkin.PointedBg) + '"'#10 +
+        '  base[SELECTED] = "' + GtkHex(ASkin.PointedBg) + '"'#10 +
+        '  base[INSENSITIVE] = "' + GtkHex(ASkin.PanelBg) + '"'#10 +
+        '  text[NORMAL] = "' + GtkHex(ASkin.WindowText) + '"'#10 +
+        '  text[PRELIGHT] = "' + GtkHex(ASkin.WindowText) + '"'#10 +
+        '  text[ACTIVE] = "' + GtkHex(ASkin.PointedText) + '"'#10 +
+        '  text[SELECTED] = "' + GtkHex(ASkin.PointedText) + '"'#10 +
+        '  text[INSENSITIVE] = "' + GtkHex(ASkin.WindowTextDim) + '"'#10 +
         '}'#10 +
         'style "ibiblia-slider" = "ibiblia-skin" {'#10 +
+        '  engine "" {}'#10 +
         '  bg[NORMAL] = "' + GtkHex(GtkBlend(ASkin.PanelBg, Hi, 26 - 14 * Ord(not ASkin.IsDark))) + '"'#10 +
         '  bg[PRELIGHT] = "' + GtkHex(GtkBlend(ASkin.PanelBg, Hi, 38 - 22 * Ord(not ASkin.IsDark))) + '"'#10 +
         '  bg[ACTIVE] = "' + GtkHex(GtkBlend(ASkin.PanelBg, clBlack, 30 - 16 * Ord(not ASkin.IsDark))) + '"'#10 +
         '}'#10 +
         'style "ibiblia-input" = "ibiblia-skin" {'#10 +
+        '  engine "" {}'#10 +
         '  base[NORMAL] = "' + GtkHex(ASkin.WindowBg) + '"'#10 +
         '  base[PRELIGHT] = "' + GtkHex(ASkin.WindowBg) + '"'#10 +
-        '  base[ACTIVE] = "' + GtkHex(ASkin.WindowBg) + '"'#10 +
+        '  base[ACTIVE] = "' + GtkHex(ASkin.PointedBg) + '"'#10 +
+        '  base[SELECTED] = "' + GtkHex(ASkin.PointedBg) + '"'#10 +
         '  base[INSENSITIVE] = "' + GtkHex(ASkin.PanelBg) + '"'#10 +
         '  text[NORMAL] = "' + GtkHex(ASkin.WindowText) + '"'#10 +
         '  text[PRELIGHT] = "' + GtkHex(ASkin.WindowText) + '"'#10 +
-        '  text[ACTIVE] = "' + GtkHex(ASkin.WindowText) + '"'#10 +
+        '  text[ACTIVE] = "' + GtkHex(ASkin.PointedText) + '"'#10 +
+        '  text[SELECTED] = "' + GtkHex(ASkin.PointedText) + '"'#10 +
         '}'#10 +
-        'widget_class "*GtkComboBox*" style "ibiblia-input"'#10 +
-        'widget_class "*GtkButton*" style "ibiblia-skin"'#10 +
-        'widget_class "*GtkNotebook*" style "ibiblia-skin"'#10 +
-        'widget_class "*GtkFixed*" style "ibiblia-skin"'#10 +
-        'widget_class "*GtkEventBox*" style "ibiblia-skin"'#10 +
-        'widget_class "*GtkFrame*" style "ibiblia-skin"'#10 +
-        'widget_class "*GtkAlignment*" style "ibiblia-skin"'#10 +
-        'widget_class "*GtkWindow*" style "ibiblia-skin"'#10 +
-        'widget_class "*GtkDialog*" style "ibiblia-skin"'#10 +
-        'widget_class "*GtkMessageDialog*" style "ibiblia-skin"'#10 +
-        'widget_class "*GtkBox*" style "ibiblia-skin"'#10 +
-        'widget_class "*GtkVBox*" style "ibiblia-skin"'#10 +
-        'widget_class "*GtkHBox*" style "ibiblia-skin"'#10 +
-        'widget_class "*GtkButtonBox*" style "ibiblia-skin"'#10 +
-        'widget_class "*GtkHButtonBox*" style "ibiblia-skin"'#10 +
-        'widget_class "*GtkTable*" style "ibiblia-skin"'#10 +
-        'widget_class "*GtkLabel*" style "ibiblia-skin"'#10 +
         'style "ibiblia-menu" = "ibiblia-skin" {'#10 +
+        '  engine "" {}'#10 +
+        '  bg[NORMAL] = "' + GtkHex(ASkin.PanelBg) + '"'#10 +
         '  bg[PRELIGHT] = "' + GtkHex(ASkin.PointedBg) + '"'#10 +
         '  bg[SELECTED] = "' + GtkHex(ASkin.PointedBg) + '"'#10 +
+        '  fg[NORMAL] = "' + GtkHex(ASkin.PanelText) + '"'#10 +
         '  fg[PRELIGHT] = "' + GtkHex(ASkin.PointedText) + '"'#10 +
         '  fg[SELECTED] = "' + GtkHex(ASkin.PointedText) + '"'#10 +
         '}'#10 +
-        'widget_class "*GtkMenu*" style "ibiblia-menu"'#10 +
-        'widget_class "*GtkMenuBar*" style "ibiblia-menu"'#10 +
-        'widget_class "*GtkMenuItem*" style "ibiblia-menu"'#10 +
-        'widget_class "*GtkScale*" style "ibiblia-skin"'#10 +
-        'widget_class "*GtkProgressBar*" style "ibiblia-skin"'#10 +
-        'widget_class "*GtkStatusbar*" style "ibiblia-skin"'#10 +
-        'widget_class "*GtkScrollbar*" style "ibiblia-slider"'#10 +
-        'widget_class "*GtkHScrollbar*" style "ibiblia-slider"'#10 +
-        'widget_class "*GtkVScrollbar*" style "ibiblia-slider"'#10;
+        'widget_class "*GtkComboBox*" style : highest "ibiblia-input"'#10 +
+        'widget_class "*GtkEntry*" style : highest "ibiblia-input"'#10 +
+        'widget_class "*GtkTextView*" style : highest "ibiblia-input"'#10 +
+        'widget_class "*GtkTreeView*" style : highest "ibiblia-input"'#10 +
+        'widget_class "*GtkButton*" style : highest "ibiblia-skin"'#10 +
+        'widget_class "*GtkCheckButton*" style : highest "ibiblia-skin"'#10 +
+        'widget_class "*GtkRadioButton*" style : highest "ibiblia-skin"'#10 +
+        'widget_class "*GtkNotebook*" style : highest "ibiblia-skin"'#10 +
+        'widget_class "*GtkFixed*" style : highest "ibiblia-skin"'#10 +
+        'widget_class "*GtkEventBox*" style : highest "ibiblia-skin"'#10 +
+        'widget_class "*GtkFrame*" style : highest "ibiblia-skin"'#10 +
+        'widget_class "*GtkAlignment*" style : highest "ibiblia-skin"'#10 +
+        'widget_class "*GtkWindow*" style : highest "ibiblia-skin"'#10 +
+        'widget_class "*GtkDialog*" style : highest "ibiblia-skin"'#10 +
+        'widget_class "*GtkMessageDialog*" style : highest "ibiblia-skin"'#10 +
+        'widget_class "*GtkBox*" style : highest "ibiblia-skin"'#10 +
+        'widget_class "*GtkVBox*" style : highest "ibiblia-skin"'#10 +
+        'widget_class "*GtkHBox*" style : highest "ibiblia-skin"'#10 +
+        'widget_class "*GtkButtonBox*" style : highest "ibiblia-skin"'#10 +
+        'widget_class "*GtkHButtonBox*" style : highest "ibiblia-skin"'#10 +
+        'widget_class "*GtkTable*" style : highest "ibiblia-skin"'#10 +
+        'widget_class "*GtkLabel*" style : highest "ibiblia-skin"'#10 +
+        'widget_class "*GtkMenu*" style : highest "ibiblia-menu"'#10 +
+        'widget_class "*GtkMenuBar*" style : highest "ibiblia-menu"'#10 +
+        'widget_class "*GtkMenuItem*" style : highest "ibiblia-menu"'#10 +
+        'widget_class "*GtkScale*" style : highest "ibiblia-skin"'#10 +
+        'widget_class "*GtkProgressBar*" style : highest "ibiblia-skin"'#10 +
+        'widget_class "*GtkStatusbar*" style : highest "ibiblia-skin"'#10 +
+        'widget_class "*GtkScrollbar*" style : highest "ibiblia-slider"'#10 +
+        'widget_class "*GtkHScrollbar*" style : highest "ibiblia-slider"'#10 +
+        'widget_class "*GtkVScrollbar*" style : highest "ibiblia-slider"'#10;
       gtk_rc_parse_string(PChar(Rc));
     end;
     gtk_rc_reset_styles(Settings);

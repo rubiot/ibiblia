@@ -1,4 +1,8 @@
-﻿Version 1.1.0.096 (64-bit Edition) - 2026-11-22
+﻿Version 1.1.0.097 (64-bit Edition) - 2026-11-22
+- Fixed Classic (Light) skin on Linux dark desktop themes (e.g. KDE Breeze Dark): disabled GTK2 pixmap theme engines (engine "" {} with : highest priority) so dropdown menus, submenus, buttons, and active notebook tabs paint cleanly in light colours instead of dark pixmaps with black text.
+- Fixed Classic (Light) startup and project-change skinning so the KDE title bar, top status header labels, Bible tree, verse panels, chapter view, dictionary popup, note previews, and About/Changelog dialogs all render crisp dark text on light surfaces.
+
+Version 1.1.0.096 (64-bit Edition) - 2026-11-22
 - Updated the in-app User Guide (Shift+F1 in unitabout.pas and FormNewFeaturesGuide.pas) through v1.1.0.096 with full documentation for Notepad++-style Find & Replace, Unassociated word search, LCS association preservation, 7-step Undo/Redo, Activate window on mouse hover, Export Module Properties Preview/Raw tabs, and Project Change Log inline diffs.
 
 Version 1.1.0.095 (64-bit Edition) - 2026-11-22

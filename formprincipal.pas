@@ -2206,7 +2206,7 @@ begin
     Caption := '';
     BevelOuter := bvNone;
     ParentColor := False;
-    Color := clBtnFace;
+    Color := UISurfaceColor;
     ShowHint := True;
   end;
 
@@ -2228,7 +2228,7 @@ begin
     Transparent := True;
     Layout := tlCenter;
     ShowHint := True;
-    Font.Color := clWindowText;
+    Font.Color := UITextColor;
     if Bold then
       Font.Style := Font.Style + [fsBold];
   end;
@@ -2300,7 +2300,7 @@ begin
     Height := 34;
     BevelOuter := bvNone;
     ParentColor := False;
-    Color := clBtnFace;
+    Color := UISurfaceColor;
     OnResize := @StateHeaderResize;
   end;
 
@@ -5871,8 +5871,7 @@ begin
     if not FDockPopupRightEnabled then
       FrmDictionaryPopup.DockToMainLeftEdge := FDockPopupLeftEnabled;
   end;
-  if CurrentSkin.Id <> skClassic then
-    ApplyActiveSkin;
+  ApplyActiveSkin;
   if not FHardCrashChecked then
   begin
     FHardCrashChecked := True;
@@ -6105,18 +6104,23 @@ begin
   ApplyMenuBarSkin(Self, IsThemedSkin);
   // LCL draws a tree with tvoThemedDraw in the Windows theme's text colour
   // (dark), whatever Font.Color says; the 1.0.1 mod has it off for that reason
+  {$IFDEF WINDOWS}
   if CurrentSkin.Id = skClassic then
   begin
     TreeView1.Options := TreeView1.Options + [tvoThemedDraw];
-    TreeView1.Color := clWindow;
-    TreeView1.Font.Color := clWindowText;
-    TreeView1.ExpandSignColor := clWindowText;
+    TreeView1.Color := CurrentSkin.TreeBg;
+    TreeView1.Font.Color := CurrentSkin.TreeText;
+    TreeView1.ExpandSignColor := CurrentSkin.TreeText;
   end
   else
+  {$ENDIF}
   begin
     TreeView1.Options := TreeView1.Options - [tvoThemedDraw];
     TreeView1.ParentColor := False;
-    TreeView1.SelectionColor := CurrentSkin.HighlightBg;
+    if CurrentSkin.Id = skClassic then
+      TreeView1.SelectionColor := CurrentSkin.PointedBg
+    else
+      TreeView1.SelectionColor := CurrentSkin.HighlightBg;
     TreeView1.ExpandSignType := tvestArrowFill;
     TreeView1.Color := CurrentSkin.TreeBg;
     TreeView1.Font.Color := CurrentSkin.TreeText;
@@ -6191,12 +6195,22 @@ procedure TMainForm.TreeViewCustomDrawItem(Sender: TCustomTreeView;
   Node: TTreeNode; State: TCustomDrawState; var DefaultDraw: Boolean);
 begin
   DefaultDraw := True;
+  {$IFDEF WINDOWS}
   if CurrentSkin.Id = skClassic then
     Exit;
+  {$ENDIF}
   if cdsSelected in State then
   begin
-    Sender.Canvas.Brush.Color := CurrentSkin.HighlightBg;
-    Sender.Canvas.Font.Color := CurrentSkin.HighlightText;
+    if CurrentSkin.Id = skClassic then
+    begin
+      Sender.Canvas.Brush.Color := CurrentSkin.PointedBg;
+      Sender.Canvas.Font.Color := CurrentSkin.PointedText;
+    end
+    else
+    begin
+      Sender.Canvas.Brush.Color := CurrentSkin.HighlightBg;
+      Sender.Canvas.Font.Color := CurrentSkin.HighlightText;
+    end;
   end
   else if cdsHot in State then
   begin
@@ -6603,8 +6617,7 @@ end;
   applied after the project opens, which is why a restart cleared it. }
 procedure TMainForm.ReapplySkinAfterProjectChange;
 begin
-  if CurrentSkin.Id <> skClassic then
-    ApplyActiveSkin;
+  ApplyActiveSkin;
 end;
 
 procedure TMainForm.ActionFindInProjectExecute(Sender: TObject);
@@ -7049,16 +7062,8 @@ begin
   Combo.Canvas.Pen.Width := 1;
   if odSelected in State then
   begin
-    if CurrentSkin.Id = skClassic then
-    begin
-      Combo.Canvas.Brush.Color := clHighlight;
-      Combo.Canvas.Font.Color := clHighlightText;
-    end
-    else
-    begin
-      Combo.Canvas.Brush.Color := CurrentSkin.PointedBg;
-      Combo.Canvas.Font.Color := CurrentSkin.PointedText;
-    end;
+    Combo.Canvas.Brush.Color := CurrentSkin.PointedBg;
+    Combo.Canvas.Font.Color := CurrentSkin.PointedText;
   end
   else
   begin
@@ -7171,16 +7176,8 @@ begin
   List.Canvas.Pen.Width := 1;
   if odSelected in State then
   begin
-    if CurrentSkin.Id = skClassic then
-    begin
-      List.Canvas.Brush.Color := clHighlight;
-      List.Canvas.Font.Color := clHighlightText;
-    end
-    else
-    begin
-      List.Canvas.Brush.Color := CurrentSkin.PointedBg;
-      List.Canvas.Font.Color := CurrentSkin.PointedText;
-    end;
+    List.Canvas.Brush.Color := CurrentSkin.PointedBg;
+    List.Canvas.Font.Color := CurrentSkin.PointedText;
   end
   else
   begin

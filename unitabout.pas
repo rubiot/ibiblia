@@ -114,6 +114,10 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.097 (64-bit Edition) - 2026-11-22' + LineEnding +
+  '- Fixed Classic (Light) skin on Linux dark desktop themes (e.g. KDE Breeze Dark): disabled GTK2 pixmap theme engines via engine "" {} with : highest priority so dropdown menus, submenus, buttons, and active notebook tabs paint cleanly in light colours instead of dark pixmaps with black text.' + LineEnding +
+  '- Fixed Classic (Light) startup and project-change skinning by running ApplyActiveSkin and ApplyDialogStyle unconditionally and replacing hardcoded clWindow/clWindowText/clBtnFace fallbacks in verse panels, chapter view, Bible tree, top status header, dictionary popup, note previews, and About/Changelog dialogs with CurrentSkin colors.' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.096 (64-bit Edition) - 2026-11-22' + LineEnding +
   '- Updated the in-app User Guide (Shift+F1 in unitabout.pas and FormNewFeaturesGuide.pas) through v1.1.0.096 with full documentation for Notepad++-style Find & Replace (Ctrl+F / Ctrl+H, Normal/Extended/PCRE Regex, Match exact words, Range filter, Unassociated Destination/Source words, LCS association-preserving replace, 7-step Undo/Redo, Transparency), Activate window on mouse hover, Night default skin, Export Module Properties Preview/Raw tabs, and Project Change Log inline diffs.' + LineEnding +
   '' + LineEnding +
@@ -990,29 +994,29 @@ begin
   end
   else
   begin
-    Color := clBtnFace;
+    Color := ASkin.PanelBg;
     if Assigned(Label1) then
-      Label1.Font.Color := clWindowText;
+      Label1.Font.Color := ASkin.PanelText;
     if Assigned(LabelVersion) then
-      LabelVersion.Font.Color := clWindowText;
+      LabelVersion.Font.Color := ASkin.PanelText;
     if Assigned(Label2) then
-      Label2.Font.Color := clWindowText;
+      Label2.Font.Color := ASkin.PanelText;
     if Assigned(LabelRubioURL) then
       LabelRubioURL.Font.Color := clBlue;
     if Assigned(LabelContributor) then
-      LabelContributor.Font.Color := clWindowText;
+      LabelContributor.Font.Color := ASkin.PanelText;
     if Assigned(Label3) then
       Label3.Font.Color := clBlue;
     if Assigned(LabelProgramDir) then
-      LabelProgramDir.Font.Color := clWindowText;
+      LabelProgramDir.Font.Color := ASkin.PanelText;
     if Assigned(LabelConfigDir) then
-      LabelConfigDir.Font.Color := clWindowText;
+      LabelConfigDir.Font.Color := ASkin.PanelText;
     if Assigned(ButtonUserGuide) then
-      ButtonUserGuide.Font.Color := clWindowText;
+      ButtonUserGuide.Font.Color := {$IFDEF WINDOWS}ASkin.PanelText{$ELSE}clDefault{$ENDIF};
     if Assigned(ButtonChangelog) then
-      ButtonChangelog.Font.Color := clWindowText;
+      ButtonChangelog.Font.Color := {$IFDEF WINDOWS}ASkin.PanelText{$ELSE}clDefault{$ENDIF};
     if Assigned(ButtonClose) then
-      ButtonClose.Font.Color := clWindowText;
+      ButtonClose.Font.Color := {$IFDEF WINDOWS}ASkin.PanelText{$ELSE}clDefault{$ENDIF};
   end;
   if Assigned(ButtonUserGuide) then ButtonUserGuide.Invalidate;
   if Assigned(ButtonChangelog) then ButtonChangelog.Invalidate;
@@ -1112,7 +1116,7 @@ begin
   if IsThemedSkin then
     lblTitle.Font.Color := CurrentSkin.HeaderColor
   else
-    lblTitle.Font.Color := clWindowText;
+    lblTitle.Font.Color := CurrentSkin.PanelText;
 
   memoChangelog := TMemo.Create(Self);
   memoChangelog.Parent := Self;
@@ -1124,16 +1128,8 @@ begin
   memoChangelog.ScrollBars := ssAutoVertical;
   memoChangelog.Font.Name := {$IFDEF WINDOWS}'Segoe UI'{$ELSE}'Sans'{$ENDIF};
   memoChangelog.Font.Size := 9;
-  if IsThemedSkin then
-  begin
-    memoChangelog.Color := CurrentSkin.WindowBg;
-    memoChangelog.Font.Color := CurrentSkin.WindowText;
-  end
-  else
-  begin
-    memoChangelog.Color := clWindow;
-    memoChangelog.Font.Color := clWindowText;
-  end;
+  memoChangelog.Color := CurrentSkin.WindowBg;
+  memoChangelog.Font.Color := CurrentSkin.WindowText;
 
   histFile := ExtractFilePath(Application.ExeName) + 'historico.txt';
   if not FileExists(histFile) then
@@ -1160,10 +1156,7 @@ begin
   btnOK.ModalResult := mrOk;
   btnOK.Default := True;
   btnOK.OnClick := @BtnOKClick;
-  if IsThemedSkin then
-    btnOK.Font.Color := {$IFDEF WINDOWS}CurrentSkin.PanelText{$ELSE}clDefault{$ENDIF}
-  else
-    btnOK.Font.Color := clWindowText;
+  btnOK.Font.Color := {$IFDEF WINDOWS}CurrentSkin.PanelText{$ELSE}clDefault{$ENDIF};
 
   ApplySkin(CurrentSkin);
 end;
@@ -1199,16 +1192,16 @@ begin
   end
   else
   begin
-    Color := clBtnFace;
+    Color := ASkin.PanelBg;
     if Assigned(lblTitle) then
-      lblTitle.Font.Color := clWindowText;
+      lblTitle.Font.Color := ASkin.PanelText;
     if Assigned(memoChangelog) then
     begin
-      memoChangelog.Color := clWindow;
-      memoChangelog.Font.Color := clWindowText;
+      memoChangelog.Color := ASkin.WindowBg;
+      memoChangelog.Font.Color := ASkin.WindowText;
     end;
     if Assigned(btnOK) then
-      btnOK.Font.Color := clWindowText;
+      btnOK.Font.Color := {$IFDEF WINDOWS}ASkin.PanelText{$ELSE}clDefault{$ENDIF};
   end;
   if Assigned(btnOK) then btnOK.Invalidate;
 end;

@@ -437,7 +437,7 @@ begin
 
   if (FActive) then
   begin
-    FPanel.Color   := clWindow;
+    FPanel.Color   := CurrentSkin.WindowBg;
     FPanel.Caption := '';
 
     InitSyntagmPopupMenu;
@@ -490,7 +490,7 @@ begin
   FSelection              := TSyntagmList.Create;
   FShowHints         := false;
   FNextAutoSelectWordMustHaveStrongMorpho := true;
-  FAssociatedColor         := clWindowText;
+  FAssociatedColor         := CurrentSkin.WindowText;
   FUnassociatedColor      := $A3A3A3;
   FDestroying           := false;
   FRendering            := false;
@@ -2927,16 +2927,8 @@ var
   Bg, Txt: TColor;
   IsReferencePanel: Boolean;
 begin
-  if CurrentSkin.Id = skClassic then
-  begin
-    Bg := clWindow;
-    Txt := clWindowText;
-  end
-  else
-  begin
-    Bg := CurrentSkin.WindowBg;
-    Txt := CurrentSkin.WindowText;
-  end;
+  Bg := CurrentSkin.WindowBg;
+  Txt := CurrentSkin.WindowText;
   // reference panels show every word in the text colour
   IsReferencePanel := FUnassociatedColor = FAssociatedColor;
   FAssociatedColor := Txt;

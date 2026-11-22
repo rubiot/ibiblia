@@ -412,9 +412,9 @@ begin
   ScrollBars := ssAutoVertical;
   if CurrentSkin.Id = skClassic then
   begin
-    Background.Color := clWindow;
-    Colors.BkGnd := clWindow;
-    TextStyle.Font.Color := clWindowText;
+    Background.Color := CurrentSkin.WindowBg;
+    Colors.BkGnd := CurrentSkin.WindowBg;
+    TextStyle.Font.Color := CurrentSkin.WindowText;
   end
   else
   begin
@@ -434,9 +434,9 @@ begin
   FBodyRaw := ABodyRaw;
   if CurrentSkin.Id = skClassic then
   begin
-    Background.Color := clWindow;
-    Colors.BkGnd := clWindow;
-    TextStyle.Font.Color := clWindowText;
+    Background.Color := CurrentSkin.WindowBg;
+    Colors.BkGnd := CurrentSkin.WindowBg;
+    TextStyle.Font.Color := CurrentSkin.WindowText;
   end
   else
   begin
