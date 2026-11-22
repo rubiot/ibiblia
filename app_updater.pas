@@ -21,8 +21,8 @@ uses
 
 const
   UpdateRepoOwner = 'SalitaNgDiyos';
-  UpdateRepoName = 'ibiblia';
-  UpdateReleasesPage = 'https://github.com/SalitaNgDiyos/ibiblia/releases';
+  UpdateRepoName = 'Dark-Skinned-iBiblia';
+  UpdateReleasesPage = 'https://github.com/SalitaNgDiyos/Dark-Skinned-iBiblia/releases';
   UpdateOldSuffix = '.old-update';
   {$IFDEF WINDOWS}
   UpdateAssetSuffix = '-windows-x64.zip';

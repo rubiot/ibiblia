@@ -1,12 +1,12 @@
-# iBiblia (SalitaNgDiyos Fork — v1.1.0.086)
+# Dark-Skinned iBiblia (v1.1.0.086)
 
-**iBiblia** (SalitaNgDiyos Fork) is a native **64-bit Windows (`x64`) and Linux (`x86_64`)** multi-format Bible alignment, translation, and interlinear tagging workstation built on [iBiblia 1.1.0](https://github.com/rubiot/ibiblia). It includes built-in import and export support for **theWord** (`.ont`, `.ot`, `.nt`, and `.dct.twm` concordances), **Timotheos** (compatible module/concordance exports with `.order` tree companions and USFM 3.0 exact Strong's metadata), **MySword** (`.bbl.mybible`), **non-encrypted e-Sword** (`.bblx` RTF, `.bbli` HTML, `.bbl` SQLite), **USFM 2.x/3.0** (`.usfm`, `.sfm`), and **USFX XML** (`.usfx`, `.xml` from [eBible.org](https://ebible.org/) and Simple Bible Reader), along with direct import from **SWORD / CrossWire** (`.conf` / `.zip` Bibles and dictionaries), compressed archives (`.zip`, `.tar*`, `.gz`, `.7z`, `.rar`), and text documents (`.txt`, `.rtf`, `.odt`, `.docx`) for adding or replacing Bible books.
+**Dark-Skinned iBiblia** (SalitaNgDiyos Fork) is a native **64-bit Windows (`x64`) and Linux (`x86_64`)** multi-format Bible alignment, translation, and interlinear tagging workstation built on [iBiblia 1.1.0](https://github.com/rubiot/ibiblia). It includes built-in import and export support for **theWord** (`.ont`, `.ot`, `.nt`, and `.dct.twm` concordances), **Timotheos** (compatible module/concordance exports with `.order` tree companions and USFM 3.0 exact Strong's metadata), **MySword** (`.bbl.mybible`), **non-encrypted e-Sword** (`.bblx` RTF, `.bbli` HTML, `.bbl` SQLite), **USFM 2.x/3.0** (`.usfm`, `.sfm`), and **USFX XML** (`.usfx`, `.xml` from [eBible.org](https://ebible.org/) and Simple Bible Reader), along with direct import from **SWORD / CrossWire** (`.conf` / `.zip` Bibles and dictionaries), compressed archives (`.zip`, `.tar*`, `.gz`, `.7z`, `.rar`), and text documents (`.txt`, `.rtf`, `.odt`, `.docx`) for adding or replacing Bible books.
 
 Associate words between a tagged **Source** Bible (Greek LXX/NT or Hebrew OT) and your **Destination** translation—or start with an initially empty Destination in a new translation project and write it directly inside the application. iBiblia automatically transfers Strong's numbers and morphological parsing tags, preserves unaffected associations across text edits, compares past translation choices in **Translation Memory**, formats verse markup in a **Visual WYSIWYG / Raw ONT Editor** with paragraph tags and rich translator notes, provides interactive Bible tree reordering and selective diff-highlighted book replacement, maintains an embedded per-project **Change Log** with **Backup & Restore** plus automated **Crash & Error Logging**, synchronizes verses with **theWord** and **Timotheos**, delivers automatic SHA-256 verified updates, and exports ready-to-use Bible and concordance modules.
 
 For downloads, manuals, and detailed history, see:
 
-* [Download Latest Release (Windows x64 & Linux x86_64)](https://github.com/SalitaNgDiyos/ibiblia/releases)
+* [Download Latest Release (Windows x64 & Linux x86_64)](https://github.com/SalitaNgDiyos/Dark-Skinned-iBiblia/releases)
 
 * [User Manual (English)](https://github.com/rubiot/ibiblia/wiki/User-manual-%28English%29) · [Installation and Updating (English)](https://github.com/rubiot/ibiblia/wiki/Installation-and-updating-%28English%29)
 
@@ -145,4 +145,4 @@ For downloads, manuals, and detailed history, see:
 
 * **Original Author & 1.1.0 Architecture**: [Rúbio R. C. Terra](https://github.com/rubiot/ibiblia) (`rubio.terra@gmail.com`)
 
-* **SalitaNgDiyos Fork, Linux Port & Feature Enhancements**: [Edmund P. Valdez](https://github.com/SalitaNgDiyos) (`malayangbiblia@gmail.com`)
+* **Dark-Skinned iBiblia Fork, Linux Port & Feature Enhancements**: [Edmund P. Valdez](https://github.com/SalitaNgDiyos) (`malayangbiblia@gmail.com`)

@@ -94,7 +94,7 @@ If source changes after packaging, rebuild and revalidate the affected checks, r
 
 ## Automatic updates and GitHub releases (1.1.0.027 and later)
 
-iBiblia checks `https://api.github.com/repos/SalitaNgDiyos/ibiblia/releases/latest` a few seconds after it starts (Help > Check for updates... does it on demand). It downloads `iBiblia-<version>-windows-x64.zip` or `iBiblia-<version>-linux-x86_64.zip`, verifies it against `SHA256SUMS.txt` from the same release, and swaps the files into the program folder (see `app_updater.pas`). Projects and `iBiblia.ini` are never touched.
+iBiblia checks `https://api.github.com/repos/SalitaNgDiyos/Dark-Skinned-iBiblia/releases/latest` a few seconds after it starts (Help > Check for updates... does it on demand). It downloads `iBiblia-<version>-windows-x64.zip` or `iBiblia-<version>-linux-x86_64.zip`, verifies it against `SHA256SUMS.txt` from the same release, and swaps the files into the program folder (see `app_updater.pas`). Projects and `iBiblia.ini` are never touched.
 
 To publish a version:
 
