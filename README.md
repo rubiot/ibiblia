@@ -1,188 +1,145 @@
-# iBiblia — 64-Bit Edition (v1.1.0.006)
+# iBiblia — 64-Bit Edition (v1.1.0.086)
 
-**iBiblia** is a 64-bit visual alignment, translation, and interlinear tagging workstation for [theWord](https://www.theword.net/) Bible modules, combining all features of **iBiblia 1.1.0** and the **v1.0.1.055 64-Bit Edition**. It includes built-in import and export support for **theWord** (`.ont`, `.ot`, `.nt`), **MySword** (`.bbl.mybible`), **non-encrypted e-Sword** (`.bblx` RTF, `.bbli` HTML, `.bbl` SQLite), **USFM 2.x/3.0** (`.usfm`, `.sfm`), and **USFX XML** (`.usfx`, `.xml` from [eBible.org](https://ebible.org/) and Simple Bible Reader).
+**iBiblia** is a native **64-bit Windows (`x64`) and Linux (`x86_64`)** visual alignment, translation, and interlinear tagging workstation for [theWord](https://www.theword.net/) Bible modules, combining **iBiblia 1.1.0** and the **64-Bit Edition**. It includes built-in import and export support for **theWord** (`.ont`, `.ot`, `.nt`), **MySword** (`.bbl.mybible`), **non-encrypted e-Sword** (`.bblx` RTF, `.bbli` HTML, `.bbl` SQLite), **SWORD / CrossWire** (`.conf` / `.zip` Bibles and dictionaries), **USFM 2.x/3.0** (`.usfm`, `.sfm`), **USFX XML** (`.usfx`, `.xml` from [eBible.org](https://ebible.org/) and Simple Bible Reader), compressed archives (`.zip`, `.tar*`, `.gz`, `.7z`, `.rar`), and text documents (`.txt`, `.rtf`, `.odt`, `.docx`) for adding or replacing Bible books.
 
-Associate words between a tagged **Source** Bible (Greek LXX/NT or Hebrew OT) and your **Destination** translation—or start with an initially empty Destination in a new translation project and write it directly inside the application. iBiblia automatically transfers Strong's numbers and morphological parsing tags, preserves unaffected associations across text edits, compares past translation choices in **Translation Memory**, formats verse markup in a **Visual WYSIWYG / Raw ONT Editor** with rich translator notes, and exports ready-to-use Bible and concordance modules.
+Associate words between a tagged **Source** Bible (Greek LXX/NT or Hebrew OT) and your **Destination** translation—or start with an initially empty Destination in a new translation project and write it directly inside the application. iBiblia automatically transfers Strong's numbers and morphological parsing tags, preserves unaffected associations across text edits, compares past translation choices in **Translation Memory**, formats verse markup in a **Visual WYSIWYG / Raw ONT Editor** with paragraph tags and rich translator notes, provides interactive Bible tree reordering and selective diff-highlighted book replacement, maintains an embedded per-project **Change Log** with **Backup & Restore** plus automated **Crash & Error Logging**, synchronizes verses with **theWord** and **Timotheos**, delivers automatic SHA-256 verified updates, and exports ready-to-use Bible and concordance modules.
 
-For foundational workflow documentation, see:
+For downloads, manuals, and detailed history, see:
 
-* [User Manual (English)](https://github.com/rubiot/ibiblia/wiki/User-manual-\(English\)) · [Installation and Updating (English)](https://www.google.com/search?q=https://github.com/rubiot/ibiblia/wiki/Installation-and-updating-%28English%29)
+* [Download Latest Release (Windows x64 & Linux x86_64)](https://github.com/SalitaNgDiyos/ibiblia/releases)
 
-* [Manual de Utilização (Português)](https://github.com/rubiot/ibiblia/wiki/Manual-de-utiliza%C3%A7%C3%A3o-\(Portugu%C3%AAs\)) · [Instalação e Atualização (Português)](https://www.google.com/search?q=https://github.com/rubiot/ibiblia/wiki/Instala%25C3%25A7%25C3%25A3o-e-atualiza%25C3%25A7%25C3%25A3o-%28Portugu%25C3%25AAs%29)
+* [User Manual (English)](https://github.com/rubiot/ibiblia/wiki/User-manual-%28English%29) · [Installation and Updating (English)](https://github.com/rubiot/ibiblia/wiki/Installation-and-updating-%28English%29)
 
-* [What's New in 1.1.0](https://www.google.com/search?q=docs/releases/1.1.0.md) · [Portable Package Instructions](https://www.google.com/search?q=docs/README-portable.md) · [Full Changelog](CHANGELOG.md)
+* [Manual de Utilização (Português)](https://github.com/rubiot/ibiblia/wiki/Manual-de-utiliza%C3%A7%C3%A3o-%28Portugu%C3%AAs%29) · [Instalação e Atualização (Português)](https://github.com/rubiot/ibiblia/wiki/Instala%C3%A7%C3%A3o-e-atualiza%C3%A7%C3%A3o-%28Portugu%C3%AAs%29)
 
-## Changelog (Starting from the 1.1.0.0 Merge)
-
-### v1.1.0.006 (2026-11-05) — Right-Edge Mouse-Tracking Dictionary Popup Dock & Compact Header Bar
-
-* **Right-Edge Mouse-Tracking Dictionary Popup Dock**: Added a toggle option (**View → Dock Word Definition Popup to Right Edge** and **Preferences → Dock word definition popup to the right edge of the main window**, persisted in `iBiblia.ini` as `popup.dock.right`) that positions the Strong's & morphology popup (`TFrmDictionaryPopup`) immediately outside the right edge of the main window (compensating for Windows 10/11 DWM invisible resize borders so the borders touch seamlessly) and smoothly follows the vertical height of the mouse pointer so the cursor sits at the exact vertical midpoint of the popup window, while preserving your custom splitter height and clamping the popup's top edge and height to the top edge and height of the main `iBiblia` window.
-
-* **Streamlined State Header Bar**: Removed the redundant bold `Reference: Book ch:vs` label above the Bible tree and shifted the verse status selector and stats labels (`Associations`, `Selection`, and `Method`) to the left.
-
-### v1.1.0.001 (2026-11-04) — UI Polish, Hover Panel Strips, 3 Toolbar Icon Sizes, Tree Status Sync & Updated Guide
-
-* **Dictionary Popup Size Persistence (`FormDictionaryPopup.pas`)**:
-
-  * Fixed Dictionary Popup dimensions (`popup.largura` and `popup.altura` in `iBiblia.ini`) not persisting across application restarts by storing explicit `FPopupWidth` and `FPopupHeight` fields initialized in `FormCreate` and `AfterConstruction` (preventing LCL's `GetControlClassDefaultSize` and DPI auto-adjust from resetting dimensions), saving user resizes immediately in `DoOnResize`, and preserving stored dimensions on exit even if the popup was not opened during the session.
-
-* **Restored 5-Line Module Properties Editor Height (`formprincipal.pas`)**:
-
-  * Parented `FPropsMemos[TextType]` to `CenterPanel` as a full-panel overlay over each Bible panel (instead of inside `VerseScrollBox` where `DirectWriteView.Align := alTop` compressed it into a tiny strip at the bottom) and enforced a minimum vertical height of 5 lines above the panel strip when `Properties` is checked.
-
-* **Hover-Only Individual Bible Bottom Toolbars Synced with Chevron Arrows (`formprincipal.pas`)**:
-
-  * Updated `UpdateVersePanelStrips` and `LayoutVersePanelLabels` (with a 50 ms hover timer) so each Bible panel's bottom toolbar (Module Name caption, Destination status radio circles, `Edit`, and `Properties`) appears only while the mouse pointer hovers over that individual Bible panel, matching the `< >` chevron navigation arrows.
-
-* **3 Top Bar Menu Icon Size Options (`ui_icons.pas`, `FormApplicationPreferences.pas`, `formprincipal.pas`)**:
-
-  * Added **Small (16 px)** (default, `24x24` buttons), **Medium (22 px)** (`31x31` buttons), and **Large (28 px)** (`38x38` buttons) selectable under both **View > Toolbar icon size** and **Tools > iBiblia preferences...**, persisted in `iBiblia.ini` (`ui.toolbar.icon.size`).
-
-* **Skin-Themed Split-Button Dropdown Arrows on Top Bar (`unitskins.pas`)**:
-
-  * Updated `ToolBarSubclassProc` (`WM_PAINT`) to paint the dropdown arrow halves of `tbsDropDown` split buttons (`ToolButton6` Suggest Association and `FTheWordToolButton` theWord/Timotheos Sync) using `CurrentSkin.PanelBg` (and `CurrentSkin.VerseHighlightBg` with a `CurrentSkin.PanelBorder` divider on hover) and a themed chevron arrow.
-
-* **Main Bible Tree Status Synchronization with Destination 4 Radio Buttons (`Project.pas`, `formprincipal.pas`)**:
-
-  * Fixed the case-insensitive identifier shadowing bug (`if id = ID`) in `TProject.UpdateTree(const AReferenceID: string)`, fired `FRadioGroupSituacao.OnChange` whenever `SintagmaOnClick` or statistical/AI suggestions advance verse status, and kept `FRadioGroupSituacao` and `TreeView1` synchronized in `SetStatus` and `TrySetVerseText`.
-
-* **Realtime Save / Unsaved Status in Bottom-Left Status Bar (`formprincipal.pas`, `unitskins.pas`)**:
-
-  * Moved `FHeaderModifiedLabel` (`Saved` / `Unsaved changes`) out of the top header bar and into `FSaveStatusPanel` at the bottom-left corner of `StatusBar1`, directly below the Status Summary box.
-
-* **Expanded New Features User Guide (`Shift+F1`) & `+0.0.0.001` Versioning (`unitabout.pas`, `FormNewFeaturesGuide.pas`, `CHANGELOG.md`, `Histórico.txt`, `historico.txt`, `iBiblia.lpi`)**:
-
-  * Expanded the interactive New Features User Guide (`Shift+F1`) from 9 to 12 illustrated topics covering all `1.1.0.0` features, and adopted `+0.0.0.001` version increments moving forward.
-
-### v1.1.0.0 (2026-11-03) — Complete Merge of iBiblia 1.1.0 & v1.0.1.055 (64-Bit Edition)
-
-* **Visual WYSIWYG & Raw ONT Verse Editor (`VerseMemo.pas`, `theword_wysiwyg_editor_v2.pas`, `theword_ont_codec_v2.pas`)**:
-
-  * Write and format verses visually with section titles (`<TS1>`..`<TS3>`), added words (`<FI>...<Fi>`), Words of Jesus (`<FR>...<Fr>`), Old Testament quotations (`<FO>...<Fo>`), underline, strikethrough, superscript, subscript, custom font colors, and relative font sizes, or switch to **Raw mode** for direct theWord markup editing with protected-region safeguards.
-
-* **Rich Translator Notes with Hover Previews (`theword_translator_note_body_v2.pas`, `translator_note_hover_v2.pas`, `rf_note_scanner.pas`)**:
-
-  * Add and edit rich translator notes (`<RF>...<Rf>`) with automatic sequential numbering (`q=1, 2, 3...`) or custom markers, and preview formatted footnotes on hover without leaving the current verse.
-
-* **Bidirectional DirectWrite Rendering & Unicode Selection (`directwrite_syntagm_view.pas`, `text_direction.pas`, `Verse.pas`)**:
-
-  * Hardware-accelerated DirectWrite rendering and accurate Unicode selection for mixed Hebrew (`RTL`), Greek (`LTR`), and translated text, with per-panel right-to-left toggles and automatic direction detection.
-
-* **Association-Preserving Text Edits & Translation Memory (`current_verse_workspace.pas`, `association_memory_service.pas`, `ChapterView.pas`)**:
-
-  * Preserves unaffected word associations through verse text edits, prompting for review before any associated members are removed.
-
-  * Compares past translation choices in the Context Panel's **Memory** tab (sortable by *Verse order* or *Rarest first*), highlights exact occurrences, and previews verses inline on hover without leaving the current verse.
-
-* **Guided Project Creation Wizard, Customizable Status Catalog & Save As (`FormNewProject.pas`, `status_catalog.pas`, `status_visuals.pas`, `project_creation_staging.pas`)**:
-
-  * Step-by-step wizard for creating **Association projects** (existing Source + Destination) or **Translation projects** (Source + initially empty Destination).
-
-  * Customizable verse statuses (up to 12 statuses with custom names, colors, and display order), multi-select status filtering in the Status Summary box, contextual workflow guide banner, and transactional **Save As** (`Ctrl+Shift+S`).
-
-* **Experimental AI Translation & Association Workflows (`ai_processing_manager.pas`, `FormAIProcessing.pas`, `FormLLMOptions.pas`, `ai_credentials.pas`)**:
-
-  * Optional single-verse and batch AI translation and association (including combined translation-plus-association and automatic added-word marking) with side-by-side batch review before applying accepted results.
-
-  * Machine-default and project-override AI settings, flow-specific prompts, reusable verse examples, and Windows DPAPI local secure storage for API keys.
-
-* **Merged 1.0.1.055 64-Bit Edition Features (`unitskins.pas`, `myswordmodule.pas`, `tanglaw_sync.pas`, `twAutomate.pas`, `unittexttospeech.pas`, `FormDictionaryPopup.pas`)**:
-
-  * Retains all 7 built-in theWord color skins (`Classic`, `theWord Dark`, `Night`, `Sepia`, `Slate`, `Solarized Dark`, `High Contrast Dark`, `Ctrl+Shift+D`), Mouse Wheel word selection & `Ctrl+Shift` multi-word association with auto-advance, 6-direction pointer-aware Dictionary Popup with instant hide & `Ctrl`-freeze, 4-slot global Default Dictionaries (including compressed `.dct.twm` and English Word stem lookup), multi-format Bible import/export (`.ont`/`.ot`/`.nt`, MySword `.bbl.mybible`, non-encrypted e-Sword `.bblx`/`.bbli`/`.bbl`, USFM `.usfm`/`.sfm`, USFX `.usfx`/`.xml`) with Apocrypha books (`67..87`), real-time Hover Text-to-Speech (`Ctrl+T`), Modeless Find in Project (`Ctrl+F`), and concurrent bidirectional verse synchronization with **theWord 7** and **Timotheos (Tanglaw)** (both Tauri 2 v0.6.5+ and Electron v0.5.5+ builds).
+* [What's New in 1.1.0](docs/releases/1.1.0.md) · [Portable Package Instructions](docs/README-portable.md) · [Full Changelog (Including Bug Fixes)](CHANGELOG.md)
 
 ## Key Features Overview
 
-### 1. Visual WYSIWYG / Raw ONT Verse Editor & Rich Translator Notes (`1.1.0.0`)
+### 1. Visual WYSIWYG / Raw ONT Verse Editor, Paragraph Formatting & Rich Translator Notes
 
-* **In-Place Visual & Raw Editing**: Click **Edit** on any Bible panel's bottom hover bar (or double-click the verse text) to open the visual editor. Format headings, added words (`I`), Words of Jesus (`J`), OT quotes (`Q`), colors, and relative font sizes, or toggle **Raw** mode to edit raw theWord ONT tags directly.
+* **In-Place Visual & Raw Editing**: Click **Edit** on any Bible panel's hover bar (or double-click the verse text) to open the visual editor. Format section titles (`<TS1>`..`<TS3>`), added words (`<FI>...<Fi>`), Words of Jesus (`<FR>...<Fr>`), Old Testament quotations (`<FO>...<Fo>`), underline, strikethrough, superscript, subscript, custom font colors, and relative font sizes, or toggle **Raw** mode to edit raw theWord ONT tags directly with protected-region safeguards.
 
-* **Paragraph Keys**: Press `Enter` for a tight paragraph break (`<CI>`), `Double Enter` for a spaced paragraph break (`<CM>`), or `Shift+Enter` for a line break within the same paragraph (`<CL>`).
+* **Paragraph Shortcut Keys**: Press `Enter` for a tight paragraph break (`<CI>`), `Double Enter` for a spaced paragraph break (`<CM>`), or `Shift+Enter` for a line break within the same paragraph (`<CL>`).
 
-* **Translator Notes (`<RF>...<Rf>`)**: Insert and edit footnotes with automatic or custom markers and hover over any footnote marker in the Bible panels to preview the formatted note in a themed popup card.
+* **theWord Paragraph Tag Rendering**: Full support for theWord paragraph tags (`<CM>`, `<CI>`, `<CL>`, `<PI>`/`<PI1>`–`<PI7>` block indents, `<PF>`/`<PF1>`–`<PF7>` first-line indents, and `<PI0>`/`<Pi>`/`<PF0>` resets) in both the **Chapter Panel** (Paragraph mode) and the **Source**, **Destination**, and **Reference** verse panels on Windows (per-paragraph DirectWrite layout) and Linux.
 
-* **Association-Preserving Edits**: Editing a verse's text automatically keeps unaffected word associations intact and asks for confirmation before removing links from modified words.
+* **Rich Translator Notes (`<RF>...<Rf>`)**: Insert and edit footnotes with automatic sequential numbering (`q=1, 2, 3...`) or custom markers, and hover over any footnote marker in the Bible panels to preview the formatted note in a themed popup card without leaving the current verse.
 
-### 2. Bidirectional DirectWrite Rendering & Translation Memory (`1.1.0.0`)
+* **Association-Preserving Edits**: Editing a verse's text automatically keeps unaffected word associations intact and prompts for impact review before removing links from modified words.
 
-* **BiDi DirectWrite Text Engine**: Renders mixed Right-to-Left Hebrew, Left-to-Right Greek, and vernacular text with crisp DirectWrite typography, Strong's occurrence badges, and accurate Unicode word selection.
+### 2. High-Speed Word Association, Navigation & Smart Dictionary Popup
 
-* **Translation Memory (`Context Panel > Memory`)**: Inspect how every source word or Strong's number in the current verse has been translated across your project, sort by *Verse order* or *Rarest first*, preview highlighted verse occurrences inline, and jump to any occurrence with `Alt+Left` / `Alt+Right` navigation history.
+* **Mouse Wheel Selection, `Ctrl+Shift` Phrase Linking & Hover TTS**: Roll the mouse wheel inside either the **Source** or **Destination** panel to step through tagged Source words hands-free (`Scroll Up` = word left, `Scroll Down` = word right). Hold `Ctrl+Shift` and click multiple words to associate a phrase (releasing `Ctrl+Shift` automatically selects the next unassociated Source word), **Right-Click** on a Destination word for single-click association and auto-advance, and toggle real-time Hover Text-to-Speech with `Ctrl+T` (system voices on Windows or `espeak-ng` on Linux via **Tools → Voice settings...**).
 
-### 3. Guided Project Wizard, Customizable Statuses & Experimental AI Workflows (`1.1.0.0` – `1.1.0.001`)
+* **Go to Verse Lookup Box (`Tools → Go to verse...`, `Ctrl+G`)**: Fast theWord-style navigation supporting space, period, colon, or comma separators (`jn 3 16`, `jn 3.16`, `1co 13:4`, `ps 23`), standard abbreviations, English/Portuguese/Tagalog/custom Apocrypha book names, Roman numerals (`ii tim 3 16`), current-book or current-chapter shorthand (`3 16`, `:16`, `jude 5`), live reference preview as you type, and instant activation when typing a letter while the Bible tree has focus.
 
-* **Guided New Project Wizard (`File > New Project`)**: Choose between an **Association project** or a **Translation project** (starting with an empty Destination module), configure scope (`OT`, `NT`, `ONT`), and customize up to 12 verse statuses.
+* **Transparent Hover-Only Verse Panel Strip, Status Roll-Up & Save Indicator**: Moving the mouse pointer into any Bible panel reveals its see-through hover bottom bar synced with `< >` verse navigation chevrons—showing the translation name, Destination status radio circles (with automatic status progression and real-time Chapter and Book roll-up in the Bible tree), **Edit**, and **Properties**. A streamlined state header bar pairs with the live `Saved` / `Unsaved changes` indicator in the bottom-left corner of the status bar.
 
-* **Experimental AI Translation & Association (`Project > AI Options`)**: Configure OpenAI, DeepSeek, or Google Gemini models (`iBiblia.models.json`), flow-specific system prompts, and few-shot verse examples from your project. Run single-verse AI suggestions or right-click a book/chapter in the Bible TreeView to launch batch AI processing with interactive review before applying changes.
+* **Smart Multi-Direction & Edge-Docked Dictionary Popup + 4 Default Dictionaries**: Floating popup placement uses 6 directions with a 1-inch pointer clearance so the hovered word stays visible; mutually exclusive **View → Dock Word Definition Popup to Right Edge** and **Dock Word Definition Popup to Left Edge** modes (also in **Preferences**) follow the vertical height of your pointer while clamping to the main window; moving directly from word to word or stepping by mouse wheel refreshes entries immediately; holding `Ctrl` keeps the popup open while allowing direct mouse-wheel scrolling and `Ctrl`+wheel zooming inside Strong's and Morphology panes (persisting custom size and dock state across restarts); and **Tools → Default dictionaries...** configures 4 global fallback dictionaries (Greek Strong's, Hebrew Strong's, Morphology, and English Word with stem matching), supporting compressed `.dct.twm`, compressed archives, and SWORD dictionaries.
 
-* **Interface Language, Icon Families & 3 Toolbar Icon Sizes**: Choose **English** or **Português**, 4 icon families (**Connected texts**, **Clareza**, **Mosaico**, **Fólio**), and 3 top-bar icon sizes (**Small 16 px**, **Medium 22 px**, **Large 28 px**) in **View > Toolbar icon size** or **Tools > iBiblia preferences...**.
+### 3. Bidirectional Rendering & Translation Memory
 
-### 4. High-Speed Word Selection, Hover Strip & Multi-Direction Dictionary Popup (`1.0.1.055` + `1.1.0.001`)
+* **Bidirectional Text Engine**: DirectWrite rendering on Windows and native Unicode layout on Linux handle mixed Right-to-Left Hebrew, Left-to-Right Greek, and vernacular text with Strong's occurrence badges, per-panel right-to-left toggles, automatic direction detection, and accurate Unicode word selection.
 
-* **Mouse Wheel Source Word Selection**: Roll the mouse wheel inside either the **Source** or **Destination** panel (`Scroll Up` = word left, `Scroll Down` = word right) to step through Source words hands-free.
+* **Translation Memory (`Context Panel → Memory`)**: Inspect how every source word or Strong's number in the current verse has been translated across your project, sort by *Verse order* or *Rarest first*, preview highlighted verse occurrences inline on hover without leaving your verse, and move through visited verse history with `Alt+Left` / `Alt+Right`.
 
-* **`Ctrl+Shift` Multi-Word Phrase Association & Auto-Advance**: Hold `Ctrl+Shift` and click multiple words to associate a phrase; releasing `Ctrl+Shift` automatically selects the next unassociated Source word.
+### 4. Interactive Bible Tree: Rearrange, Delete, Add & Replace Books
 
-* **Hover-Synced Bottom Toolbar & Chevron Arrows**: Moving the mouse pointer into any Bible panel simultaneously reveals its `< >` verse navigation chevrons after the verse text and its bottom control strip (Translation Name badge, Destination status radio circles, `Edit`, and `Properties`).
+* **Drag-and-Drop Reordering & `.order` Companions**: Every book, chapter, and verse row in the Bible tree carries a right-edge grip handle for dragging rows into a custom arrangement (including moving verses or chapters across boundaries while preserving canonical chapter and verse numbers), saved inside the `.bib` project. Toggle grips anytime with **Tools → Rearrange books, chapters and verses**, restore standard order via right-click → **Reset the order of books, chapters and verses**, and automatically emit a companion `.order` file alongside exported Bible modules for Timotheos.
 
-* **Smart 6-Direction Dictionary Popup & 4 Default Dictionaries**: Opens adjacent to the mouse pointer without covering the hovered word, hides immediately when moving off a word, stays open if `Ctrl` is held while moving the pointer into the popup to scroll/zoom, remembers its resized dimensions across restarts, and supports 4 global fallback dictionaries (Greek Strong's, Hebrew Strong's, Morphology, and English Word dictionary with stem matching).
+* **Delete Books, Chapters, or Verses**: Right-click any book, chapter, or verse in the Bible tree and choose **Delete this book / chapter / verse...** to remove its entries after confirmation, automatically saving a `_before-delete_<date>_<time>` safety copy beside the project.
 
-### 5. Multi-Format Import/Export, Apocrypha Books & External Bible Sync (`1.0.1.055` + `1.1.0.0`)
+* **Add Bible Books (`Project → Settings → Texts` & Blank-Panel `Add Bible` Link)**: Add missing canonical or Apocrypha books to Source, Destination, Reference 1, or Reference 2 from one or multiple selected files (for example, per-book USFM files), Bible modules (including SWORD), compressed archives, or text documents (`.txt`, `.rtf`, `.odt`, `.docx` with automatic detection of book titles, chapter/Greek-numeral headings, sub-verses, and double numbering). Blank or missing-verse panels also display an **Add Bible** link above the hover strip, and adding books from the other Testament prompts to expand project scope to whole Bible (`ONT`).
 
-* **Multi-Format Bible Import & Export**: Import and export **theWord** (`.ont`, `.ot`, `.nt`), **MySword** (`.bbl.mybible`), **non-encrypted e-Sword** (`.bblx`, `.bbli`, `.bbl`), **USFM 2.x/3.0** (`.usfm`, `.sfm`), and **USFX XML** (`.usfx`, `.xml`), including all 21 standalone Apocrypha / Deuterocanonical OT books (`Book >= 67`).
+* **Selective Replace with Character-Level Diff Preview**: Choose to replace an entire text or selectively replace specific books, chapters, or verses (with *Try to keep the current associations*). Checking or selecting tree nodes updates a bold `Preview: <Book Chapter:Verse>` header with difference count; side-by-side **In the project** and **In the file** panes highlight exact differing characters, tags, and words (red on existing project text, green on incoming file text) with synchronized vertical scrolling and `Ctrl`+mouse wheel zooming.
 
-* **Bidirectional theWord 7 & Timotheos (Tanglaw) Synchronization**: Synchronize verse navigation in both directions simultaneously with **64-bit theWord 7** (`WM_COPYDATA`) and **Timotheos / Tanglaw** (supporting both Tauri 2 `v0.6.5+` and Electron `v0.5.5+` installations via dual-bridge sync).
+* **Apocrypha / Deuterocanonical Placement (`67–87`)**: Deuterocanonical books (Tobit, Judith, Sirach, Maccabees, etc.) appear between Malachi and Matthew in imported source order across the Bible tree, verse navigation, Find in Project (`Ctrl+F`), `F8` status stepping, **Create patch**, Strong's concordance export, and Timotheos synchronization.
+
+### 5. Multi-Format Import, Export, Module Properties Preview & Concordances
+
+* **Broad Format, Archive & SWORD Support**: Import and export **theWord** (`.ont`, `.ot`, `.nt`), **MySword** (`.bbl.mybible`), **non-encrypted e-Sword** (`.bblx`, `.bbli`, `.bbl`), **USFM 2.x/3.0** (`.usfm`, `.sfm`), and **USFX XML** (`.usfx`, `.xml`); import **SWORD (CrossWire)** Bibles and dictionaries directly from `.conf` or `.zip` (preserving Strong's, morphology, footnotes, Words of Jesus, and Apocrypha, and converting SWORD dictionaries once into `.dct.twm`); and open compressed archives (`.zip`, `.tar`, `.tar.gz`/`.tgz`, `.tar.bz2`, `.tar.xz`, `.gz`, `.7z`, `.rar`) in Add/Replace Bible Books and dictionary pickers with combined multi-file trees and per-book conflict selection.
+
+* **Full USFM 3.0 Import & Per-Book Export**: Imports headings, paragraphs, poetry (`\q1`–`\q4`), list/table markers, nested `+` character styles, `\w` word attributes (`lemma`, `strong`, `x-morph`), `\f`/`\fe` footnotes, `\x` cross-references, unfoldingWord `\zaln` alignments, and speaker red letters (`\qt-s who="Jesus"`). Exports combined USFM 3.0 with a per-book `<file>_usfm` folder or a dedicated **USFM 3.0 Bible, per-book files (`*.zip`)** option, writing `\rem` metadata marking exact Strong's numbers for Timotheos.
+
+* **Selective Partial Export (`Choose books...`) & Panel Export Shortcut**: Use **Choose books...** on **Tagged destination text**, **Interlinear source text**, and **Strong's concordance** tabs to export only ticked books, chapters, or verses (preserving empty verse slots in theWord modules and omitting unticked verses in other formats). Right-click the Source or Destination panel → **Export as Bible module...** to open **Export** directly on the matching tab.
+
+* **Module Properties Preview & Raw (Edit) Tabs (`Project → Export`)**: Both **Tagged destination text** and **Interlinear source text** tabs provide a formatted **Preview** tab (open by default) alongside a **Raw (Edit)** tab—rendering metadata keys, clickable URLs and emails, HTML/RTF `about=` formatting, and monospace `verse.rule=` regexes, with smooth mouse-wheel scrolling, `Ctrl`+mouse wheel zooming (7 pt–24 pt) in both tabs, double-click to edit, and full skin adaptation.
+
+* **Tree-Aligned Strong's Concordance & Patches**: Strong's concordance export adheres to the exact books, custom order, and **Choose books...** selection of the main Bible tree—supporting Greek OT (LXX) Strong's, extended Strong's numbers beyond `G5624`, Apocrypha books (`67+`), and readable verse reference links (`Genesis 1:1`, `Tobit 1:1`) for both theWord and Timotheos. **Create patch** similarly mirrors the main Bible tree's exact books, Apocrypha placement, deletions, and custom arrangement.
+
+### 6. Per-Project Change Log, Backup & Restore, and Crash / Error Tracking
+
+* **Per-Project Change Log Tracker (`Project → Project change log...`)**: Stores an embedded `change_log` inside every `.bib` project file (so history travels automatically with backups and **Save As** copies), recording timestamps, categories, summaries, and details for project creation, verse/association/status/comment saves, dictionary and settings updates (with full **Before** and **After** paths and values), whole-text imports, Add/Replace Bible books, patches, AI batch applications, deletions, backups/restores, tree reordering, and manual notes. Includes text search, category filtering, manual notes, Copy, `.txt`/`.csv` export, and a resizable **Details** viewer with `Ctrl`+wheel zooming plus **inline red/green diff highlighting on text edits** (highlighting replaced text in red under `Before` and newly applied text in green under `After` while keeping non-text entries clean).
+
+* **Project Backup & Restore (`.bib.zip`)**: Manage SQLite-verified `.bib.zip` snapshots with optional notes and a configurable backup folder in **Project → Settings → Project**. Automatic pre-operation backup prompts run before Replace, Add Books, Clear Text, Apply Patch, or Apply AI results (keeping the 2 newest automatic backups while never removing manual backups); **Restore project...** backs up the current project first so restores are undoable; and **File → Open** opens `.bib.zip` archives directly.
+
+* **Automated Crash & Error Tracker (`Help → Crash & error logs...`)**: Automatically records unhandled exceptions (with stack trace, active window/control, open project, current verse, and recent activity breadcrumbs) into timestamped `.log` files under `<ConfigDir>/crash_logs/`, paired with a session watchdog that logs unexpected hard crashes on next launch. Displays a themed **iBiblia Error Report** popup (**Copy report**, **Save log as...**, **Open logs folder**, **Continue**, **Close iBiblia**) and offers **Help → Crash & error logs...** to review saved logs and create manual diagnostic reports.
+
+### 7. Guided Project Wizard, Customizable Statuses, Themes & Experimental AI Workflows
+
+* **Guided New Project Wizard, Status Catalog & Save As (`Ctrl+Shift+S`)**: Choose between an **Association project** or a **Translation project** (starting with an empty Destination module), configure `OT`/`NT`/`ONT` scope, customize up to 12 verse statuses (names, colors, and display order), filter navigation through multi-select checkboxes in **Status Summary** (`F8` / `Shift+F8`), search all texts including Apocrypha with modeless **Find in Project** (`Ctrl+F`), and save independent `.bib` copies.
+
+* **Experimental AI Translation & Association (`Project → AI Options`)**: Configure OpenAI, DeepSeek, or Google Gemini models (`iBiblia.models.json`), machine-default or per-project settings, flow-specific system prompts, and reusable verse examples. Run single-verse AI suggestions or right-click a book/chapter in the Bible tree for batch processing with side-by-side review before applying, backed by Windows DPAPI local secure storage for API keys.
+
+* **Languages, Skins, Icons & 14-Topic Interactive Guide (`Shift+F1`)**: Choose **English** or **Português** interface language, 7 built-in color skins (`Ctrl+Shift+D`), 4 icon families (**Connected texts**, **Clareza**, **Mosaico**, **Fólio**), 3 toolbar icon sizes (**Small 16 px**, **Medium 22 px**, **Large 28 px** in **View → Toolbar icon size** or **Preferences**), and explore the 14-topic illustrated **New Features User Guide** (`Shift+F1`).
+
+### 8. Cross-Platform (Windows x64 & Linux x86_64), External Bible Sync & Automatic Updates
+
+* **Native 64-Bit Windows & Linux Editions**: Runs natively on 64-bit Windows (`x64`) and 64-bit Debian/Ubuntu Linux (`x86_64`, GTK2) using interchangeable `.bib` project files. On Linux, user settings and logs live cleanly in `~/.config/iBiblia`, desktop integration registers iBiblia automatically in the Applications Menu (`IBIBLIA_NO_MENU=1` to opt out, alongside `install-menu-entry.sh`), all dialogs and KDE title bars respect dark/light/Sepia skins, and **About** displays clickable Program Folder and Working Folder paths.
+
+* **Bidirectional theWord 7 & Timotheos (Tanglaw) Synchronization**: Synchronize verse navigation in both directions simultaneously with **64-bit theWord 7** (Windows `WM_COPYDATA`) and **Timotheos (Tanglaw)** (Windows and Linux, supporting both Tauri 2 `v0.6.5+` and Electron `v0.5.5+`, with Apocrypha books matched by name).
+
+* **Automatic SHA-256 Verified Updates & Update Branch Selector**: Checks GitHub Releases automatically at startup or on demand via **Help → Check for updates...**, verifies archives against `SHA256SUMS.txt`, supports seamless background downloads (install on restart or on close) with rollback protection while leaving `.bib` projects and `iBiblia.ini` untouched (`IBIBLIA_NO_UPDATE=1` to opt out), and adds **Help → Update branch** to switch between **Stable (`linux-port`)** and **Neon (`Neon` branch)**.
 
 ## Keyboard & Mouse Shortcuts Summary
 
-| Shortcut / Action | Function | 
-| ----- | ----- | 
-| **`Mouse Wheel Up / Down`** *(in Source or Destination)* | Select previous (left) or next (right) word in the Source text one by one | 
-| **`Ctrl + Shift + Left-Click`** | Select and associate multiple words simultaneously across Source and Destination | 
-| **`Release Ctrl + Shift`** *(after associating)* | Automatically select and highlight the next unassociated word in the Source text | 
-| **`Right-Click`** *(on Destination word)* | Associate single word and immediately advance to the next unassociated Source word | 
-| **`Ctrl + Left-Click`** *(on associated word)* | Dissociate (unlink) an existing word association | 
-| **`Alt + Left` / `Alt + Right`** | Navigate back / forward through visited verse history | 
-| **`Ctrl + S` / `Ctrl + Shift + S`** | **Save Project** / **Save Project As...** (creates an independent `.bib` copy) | 
-| **`Ctrl + F`** | Open modeless **Find in Project** dialog (search Source, Destination, Refs, Strong's, or Notes) | 
-| **`F8` / `Shift + F8`** | Jump to **Next / Previous verse** matching the ticked statuses in the **Status Summary** filter | 
-| **`Page Down` / `Page Up`** | Navigate to the next / previous verse in canonical order | 
-| **`Keys 1..9`** | Set current verse status directly (synced between the Destination status circles and Bible Tree) | 
-| **`Ctrl + Mouse Wheel`** | Zoom Bible panel, Context Panel, or Dictionary Popup font size in / out | 
-| **`Hold Ctrl`** *(while Dictionary Popup is open)* | Keep Dictionary Popup open while moving the mouse pointer inside it to scroll or zoom | 
-| **`Enter` / `Double Enter` / `Shift+Enter`** *(in Editor)* | Insert `<CI>` tight paragraph / `<CM>` spaced paragraph / `<CL>` line break | 
-| **`Ctrl + T`** | Toggle real-time Text-to-Speech (TTS) word reading on hover | 
-| **`Ctrl + Shift + D`** | Toggle between Dark Mode (*theWord Dark*) and *Classic (Light)* | 
-| **`F1` / `Shift + F1`** | Show **Keyboard Shortcuts** reference / Open the interactive **New Features User Guide** | 
+| Shortcut / Action | Function |
+| ----- | ----- |
+| **`Mouse Wheel Up / Down`** *(in Source or Destination)* | Select previous (left) or next (right) word in the Source text one by one |
+| **`Ctrl + Shift + Left-Click`** | Select and associate multiple words simultaneously across Source and Destination |
+| **`Release Ctrl + Shift`** *(after associating)* | Automatically select and highlight the next unassociated word in the Source text |
+| **`Right-Click`** *(on Destination word)* | Associate single word and immediately advance to the next unassociated Source word |
+| **`Ctrl + Left-Click`** *(on associated word)* | Dissociate (unlink) an existing word association |
+| **`Ctrl + G`** *(or type a letter in the Bible tree)* | Open **Go to verse...** lookup box to jump directly to any book, chapter, or verse |
+| **`Alt + Left` / `Alt + Right`** | Navigate back / forward through visited verse history |
+| **`Ctrl + S` / `Ctrl + Shift + S`** | **Save Project** / **Save Project As...** (creates an independent `.bib` copy) |
+| **`Ctrl + F`** | Open modeless **Find in Project** dialog (search Source, Destination, Refs, Strong's, or Notes) |
+| **`F8` / `Shift + F8`** | Jump to **Next / Previous verse** matching the ticked statuses in the **Status Summary** filter |
+| **`Page Down` / `Page Up`** | Navigate to the next / previous verse in canonical order |
+| **`Keys 1..9`** | Set current verse status directly (synced between the Destination status circles and Bible Tree) |
+| **`Ctrl + Mouse Wheel`** | Zoom Bible panels, Context Panel, Dictionary Popup, Export Properties Preview/Raw, Replace Books diff previews, or Project Change Log Details |
+| **`Hold Ctrl`** *(while Dictionary Popup is open)* | Keep Dictionary Popup open while moving the mouse pointer inside it to scroll or zoom |
+| **`Enter` / `Double Enter` / `Shift+Enter`** *(in Editor)* | Insert `<CI>` tight paragraph / `<CM>` spaced paragraph / `<CL>` line break |
+| **`Ctrl + T`** | Toggle real-time Text-to-Speech (TTS) word reading on hover |
+| **`Ctrl + Shift + D`** | Toggle between Dark Mode (*theWord Dark*) and *Classic (Light)* |
+| **`F1` / `Shift + F1`** | Show **Keyboard Shortcuts** reference / Open the interactive **New Features User Guide** |
 
 ## Built-In Color Themes (Skins)
 
-| Theme Name | Background | Primary Ink | Best For | 
-| ----- | ----- | ----- | ----- | 
-| **Classic (Light)** | `#FFFFFF` | `#000000` | Daylight reading and traditional Windows appearance | 
-| **theWord Dark (Charcoal)** | `#1E1E1E` | `#D8D8D8` | Matching theWord 7 dark workspace for low-glare sessions | 
-| **Night (Pitch Black)** | `#121212` | `#E8E6E3` | OLED displays and late-night translation work | 
-| **Sepia (Parchment)** | `#F4EEDB` | `#2D241E` | Warm paper-like contrast for extended reading comfort | 
-| **Slate (Steel Blue)** | `#1C232B` | `#DCE4EC` | Cool navy-slate contrast with crisp cyan highlights | 
-| **Solarized Dark** | `#002B36` | `#93A1A1` | Precision low-contrast cyan/teal environment | 
-| **High Contrast Dark** | `#000000` | `#FFFFFF` | Maximum legibility with vivid yellow and cyan accents | 
+| Theme Name | Background | Primary Ink | Best For |
+| ----- | ----- | ----- | ----- |
+| **Classic (Light)** | `#FFFFFF` | `#000000` | Daylight reading and traditional desktop appearance |
+| **theWord Dark (Charcoal)** | `#1E1E1E` | `#D8D8D8` | Matching theWord 7 dark workspace for low-glare sessions |
+| **Night (Pitch Black)** | `#121212` | `#E8E6E3` | OLED displays and late-night translation work |
+| **Sepia (Parchment)** | `#F4EEDB` | `#2D241E` | Warm paper-like contrast for extended reading comfort |
+| **Slate (Steel Blue)** | `#1C232B` | `#DCE4EC` | Cool navy-slate contrast with crisp cyan highlights |
+| **Solarized Dark** | `#002B36` | `#93A1A1` | Precision low-contrast cyan/teal environment |
+| **High Contrast Dark** | `#000000` | `#FFFFFF` | Maximum legibility with vivid yellow and cyan accents |
 
 ## AI Model Catalog (`iBiblia.models.json`)
 
-`iBiblia.models.json`, placed beside `iBiblia.exe`, is the editable model catalog for the supported OpenAI, DeepSeek, and Google providers:
+`iBiblia.models.json`, placed beside `iBiblia.exe` (Windows) or `iBiblia` (Linux), is the editable model catalog for the supported OpenAI, DeepSeek, and Google providers:
 
-```
+```json
 {
   "name": "gpt-4.1-mini",
   "provider": "OpenAI",
   "supports_struct_output": true
 }
-
-
-
-
 ```
 
-`supports_struct_output` controls requests for structured JSON responses when supported. A missing or invalid catalog falls back to built-in defaults. API keys are configured inside the application (`Project > AI Options`) and stored in Windows local secure storage for the current user; never place API keys inside `iBiblia.models.json`.
+`supports_struct_output` controls requests for structured JSON responses when supported. A missing or invalid catalog falls back to built-in defaults. API keys are configured inside the application (`Project > AI Options`) and stored locally for the current user; never place API keys inside `iBiblia.models.json`.
 
 ## Credits & Contributors
 
