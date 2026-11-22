@@ -300,8 +300,7 @@ procedure TCrashReportForm.FormShowHandler(Sender: TObject);
 begin
   HandleNeeded;
   ApplyDarkModeToWindow(Self, CurrentSkin.IsDark);
-  if CurrentSkin.Id <> skClassic then
-    ApplySkinToForm(Self, CurrentSkin);
+  ApplySkinToForm(Self, CurrentSkin);
   ApplyTheme;
 end;
 
@@ -542,8 +541,7 @@ procedure TCrashLogsManagerForm.FormShowHandler(Sender: TObject);
 begin
   HandleNeeded;
   ApplyDarkModeToWindow(Self, CurrentSkin.IsDark);
-  if CurrentSkin.Id <> skClassic then
-    ApplySkinToForm(Self, CurrentSkin);
+  ApplySkinToForm(Self, CurrentSkin);
   ApplyTheme;
 end;
 

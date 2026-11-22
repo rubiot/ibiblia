@@ -4841,8 +4841,8 @@ begin
       TWinControl(dlg.Controls[i]).HandleNeeded;
   end;
   ApplySkinToForm(dlg, CurrentSkin);
-  {$IFDEF WINDOWS}
   ApplyDarkModeToWindow(dlg, CurrentSkin.IsDark);
+  {$IFDEF WINDOWS}
   for i := 0 to dlg.ControlCount - 1 do
   begin
     if dlg.Controls[i] is TButton then

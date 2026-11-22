@@ -652,14 +652,14 @@ begin
 
   if CurrentSkin.Id = skClassic then
   begin
-    FDetailsFrame.Color := clWindow;
-    FDetailsMemo.Color := clWindow;
-    FDetailsMemo.Background.Color := clWindow;
-    FDetailsMemo.Colors.BkGnd := clWindow;
-    FDetailsMemo.Colors.SelBkGnd := clHighlight;
-    FDetailsMemo.Colors.SelText := clHighlightText;
-    FDetailsMemo.Colors.SelBkGndFocused := clHighlight;
-    FDetailsMemo.Colors.SelTextFocused := clHighlightText;
+    FDetailsFrame.Color := CurrentSkin.WindowBg;
+    FDetailsMemo.Color := CurrentSkin.WindowBg;
+    FDetailsMemo.Background.Color := CurrentSkin.WindowBg;
+    FDetailsMemo.Colors.BkGnd := CurrentSkin.WindowBg;
+    FDetailsMemo.Colors.SelBkGnd := CurrentSkin.PointedBg;
+    FDetailsMemo.Colors.SelText := CurrentSkin.PointedText;
+    FDetailsMemo.Colors.SelBkGndFocused := CurrentSkin.PointedBg;
+    FDetailsMemo.Colors.SelTextFocused := CurrentSkin.PointedText;
     FDetailsMemo.TextStyle.Font.Color := UITextColor;
   end
   else
@@ -694,8 +694,7 @@ procedure TProjectChangeLogForm.FormShowHandler(Sender: TObject);
 begin
   HandleNeeded;
   ApplyDarkModeToWindow(Self, CurrentSkin.IsDark);
-  if CurrentSkin.Id <> skClassic then
-    ApplySkinToForm(Self, CurrentSkin);
+  ApplySkinToForm(Self, CurrentSkin);
   ApplyTheme;
   ShowSelectedDetails;
 end;

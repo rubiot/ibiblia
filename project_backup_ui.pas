@@ -325,13 +325,8 @@ begin
   Column := FList.Columns.Add; Column.Caption := SBackupColumnSize; Column.Width := 80;
 
   ApplyDialogStyle(Self);
-  if CurrentSkin.Id <> skClassic then
-  begin
-    FList.Color := CurrentSkin.WindowBg;
-    FList.Font.Color := CurrentSkin.WindowText;
-  end
-  else
-    FList.Font.Color := clWindowText;
+  FList.Color := CurrentSkin.WindowBg;
+  FList.Font.Color := CurrentSkin.WindowText;
   Folder := GetBackupFolder;
   if (Folder = '') or not DirectoryExists(Folder) then
   begin

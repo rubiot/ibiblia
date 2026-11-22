@@ -114,6 +114,9 @@ const
 
   CHANGELOG_TEXT =
     
+  'Version 1.1.0.098 (64-bit Edition) - 2026-11-22' + LineEnding +
+  '- Fixed remaining Classic (Light) skin remnants on Linux dark desktop themes: replaced clWindow backgrounds in Project Change Log Details (project_change_log_ui.pas) and Export Module Properties Preview (module_properties_preview.pas) with CurrentSkin.WindowBg, fixed Project Backups / Crash Logs / Export dialog skinning, and enabled Linux KDE title bar syncing (ApplyDarkModeToWindow) on About, Changelog, User Guide, and MessageBox dialogs.' + LineEnding +
+  '' + LineEnding +
   'Version 1.1.0.097 (64-bit Edition) - 2026-11-22' + LineEnding +
   '- Fixed Classic (Light) skin on Linux dark desktop themes (e.g. KDE Breeze Dark): disabled GTK2 pixmap theme engines via engine "" {} with : highest priority so dropdown menus, submenus, buttons, and active notebook tabs paint cleanly in light colours instead of dark pixmaps with black text.' + LineEnding +
   '- Fixed Classic (Light) startup and project-change skinning by running ApplyActiveSkin and ApplyDialogStyle unconditionally and replacing hardcoded clWindow/clWindowText/clBtnFace fallbacks in verse panels, chapter view, Bible tree, top status header, dictionary popup, note previews, and About/Changelog dialogs with CurrentSkin colors.' + LineEnding +
@@ -956,9 +959,9 @@ procedure TFormAbout.ApplySkin(const ASkin: TSkinColors);
 begin
   Color := ASkin.PanelBg;
   ApplySkinToForm(Self, ASkin);
-  {$IFDEF WINDOWS}
   if HandleAllocated then
     ApplyDarkModeToWindow(Self, ASkin.IsDark);
+  {$IFDEF WINDOWS}
   if Assigned(ButtonUserGuide) and ButtonUserGuide.HandleAllocated then
     HookButtonControl(ButtonUserGuide);
   if Assigned(ButtonChangelog) and ButtonChangelog.HandleAllocated then
@@ -1026,8 +1029,8 @@ end;
 procedure TFormAbout.FormShow(Sender: TObject);
 begin
   ApplySkin(CurrentSkin);
-  {$IFDEF WINDOWS}
   ApplyDarkModeToWindow(Self, CurrentSkin.IsDark);
+  {$IFDEF WINDOWS}
   if Assigned(ButtonUserGuide) then
     HookButtonControl(ButtonUserGuide);
   if Assigned(ButtonChangelog) then
@@ -1171,9 +1174,9 @@ procedure TFormChangelog.ApplySkin(const ASkin: TSkinColors);
 begin
   Color := ASkin.PanelBg;
   ApplySkinToForm(Self, ASkin);
-  {$IFDEF WINDOWS}
   if HandleAllocated then
     ApplyDarkModeToWindow(Self, ASkin.IsDark);
+  {$IFDEF WINDOWS}
   if Assigned(btnOK) and btnOK.HandleAllocated then
     HookButtonControl(btnOK);
   {$ENDIF}
@@ -1209,8 +1212,8 @@ end;
 procedure TFormChangelog.FormShow(Sender: TObject);
 begin
   ApplySkin(CurrentSkin);
-  {$IFDEF WINDOWS}
   ApplyDarkModeToWindow(Self, CurrentSkin.IsDark);
+  {$IFDEF WINDOWS}
   if Assigned(btnOK) then
     HookButtonControl(btnOK);
   {$ENDIF}
@@ -2691,9 +2694,9 @@ begin
     {$ENDIF}
   end;
 
-  {$IFDEF WINDOWS}
   if HandleAllocated then
     ApplyDarkModeToWindow(Self, ASkin.IsDark);
+  {$IFDEF WINDOWS}
   if Assigned(btnPrev) and btnPrev.HandleAllocated then HookButtonControl(btnPrev);
   if Assigned(btnNext) and btnNext.HandleAllocated then HookButtonControl(btnNext);
   if Assigned(btnCopy) and btnCopy.HandleAllocated then HookButtonControl(btnCopy);
@@ -2713,8 +2716,8 @@ begin
   if Sender = nil then ;
   LayoutFooterButtons;
   ApplySkin(CurrentSkin);
-  {$IFDEF WINDOWS}
   ApplyDarkModeToWindow(Self, CurrentSkin.IsDark);
+  {$IFDEF WINDOWS}
   if Assigned(btnPrev) then HookButtonControl(btnPrev);
   if Assigned(btnNext) then HookButtonControl(btnNext);
   if Assigned(btnCopy) then HookButtonControl(btnCopy);

@@ -214,8 +214,7 @@ begin
       Dialog.Tree.CheckReferences(Selected)
     else
       Dialog.Tree.SelectAll;
-    if CurrentSkin.Id <> skClassic then
-      ApplySkinToForm(Dialog, CurrentSkin);
+    ApplySkinToForm(Dialog, CurrentSkin);
     Dialog.Tree.ApplySkinColors;
     if Dialog.ShowModal <> mrOK then
       Exit;

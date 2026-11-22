@@ -143,8 +143,7 @@ begin
   LayoutControls;
   Position := poMainFormCenter;
   // the dialog is built before the skin can reach it: skin it, and its tree
-  if CurrentSkin.Id <> skClassic then
-    ApplySkinToForm(Self, CurrentSkin);
+  ApplySkinToForm(Self, CurrentSkin);
   FBibleTreeView.ApplySkinColors;
 end;
 

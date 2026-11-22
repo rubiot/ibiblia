@@ -6,6 +6,9 @@
 
 ## What's New & Fixed in v1.1.0
 
+### v1.1.0.098 (2026-11-22)
+- Fixed remaining Classic (Light) skin remnants on Linux dark desktop themes: replaced `clWindow` backgrounds in Project Change Log Details (`project_change_log_ui.pas`) and Export Module Properties Preview (`module_properties_preview.pas`) with `CurrentSkin.WindowBg`, fixed Project Backups / Crash Logs / Export dialog skinning, and enabled Linux KDE title bar syncing (`ApplyDarkModeToWindow`) on About, Changelog, User Guide, and MessageBox dialogs.
+
 ### v1.1.0.097 (2026-11-22)
 - Fixed Classic (Light) skin on Linux dark desktop themes (e.g., KDE Breeze Dark): disabled GTK2 pixmap theme engines (`engine "" {}` with `: highest` priority) so dropdown menus, submenus, buttons, and active notebook tabs paint cleanly in light colors.
 - Fixed Classic (Light) startup and project-change skinning by always applying `ApplyActiveSkin` and `ApplyDialogStyle` and replacing hardcoded `clWindow`/`clWindowText`/`clBtnFace` fallbacks across verse panels, chapter view, Bible tree, top status header, dictionary popup, note previews, and About/Changelog dialogs with `CurrentSkin` colors.

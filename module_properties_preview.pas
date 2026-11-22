@@ -1838,13 +1838,13 @@ procedure TModulePropertiesPreview.ApplySkinColors;
 begin
   if CurrentSkin.Id = skClassic then
   begin
-    Color := clWindow;
-    Background.Color := clWindow;
-    Colors.BkGnd := clWindow;
-    Colors.SelBkGnd := clHighlight;
-    Colors.SelText := clHighlightText;
-    Colors.SelBkGndFocused := clHighlight;
-    Colors.SelTextFocused := clHighlightText;
+    Color := CurrentSkin.WindowBg;
+    Background.Color := CurrentSkin.WindowBg;
+    Colors.BkGnd := CurrentSkin.WindowBg;
+    Colors.SelBkGnd := CurrentSkin.PointedBg;
+    Colors.SelText := CurrentSkin.PointedText;
+    Colors.SelBkGndFocused := CurrentSkin.PointedBg;
+    Colors.SelTextFocused := CurrentSkin.PointedText;
     TextStyle.Font.Color := UITextColor;
   end
   else
